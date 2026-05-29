@@ -14,6 +14,8 @@ public interface ChatSessionService {
 
     List<ChatMessageDto> messages(String id);
 
+    long assistantMessageCount(String id);
+
     ChatSessionDto update(String id, UpdateSessionRequest request);
 
     void touchAndMaybeTitle(String id, String firstMessage);

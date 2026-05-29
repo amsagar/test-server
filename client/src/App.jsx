@@ -65,7 +65,20 @@ export default function App() {
     setCurrentId(id);
     try {
       const msgs = await api.getMessages(id);
-      setMessages(msgs.map((m) => ({ role: m.role, content: m.content })));
+      setMessages(
+        msgs.map((m) => ({
+          role: m.role,
+          content: m.content,
+          tools: (m.tools || []).map((t) => ({
+            id: t.id,
+            name: t.name,
+            input: t.input,
+            output: t.output,
+            error: t.error,
+            running: false,
+          })),
+        }))
+      );
     } catch (e) {
       setMessages([]);
     }

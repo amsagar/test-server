@@ -6,9 +6,12 @@ import dev.danvega.codingagent.assistant.service.AssistantService;
 import dev.danvega.codingagent.chat.service.ChatSessionService;
 import dev.danvega.codingagent.chat.tooling.BuiltinToolCatalog;
 import dev.danvega.codingagent.chat.tooling.EventEmittingToolCallback;
+import dev.danvega.codingagent.chat.repo.ChatToolEventRepository;
 import dev.danvega.codingagent.chat.tooling.ToolEventRegistry;
 import dev.danvega.codingagent.chat.tooling.ToolEventSink;
 import dev.danvega.codingagent.tool.runtime.HttpToolCallbackFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.tool.ToolCallback;
@@ -23,15 +26,20 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
 @RequestMapping(ApiConstants.CHAT_PATH)
 @CrossOrigin(origins = "*")
 public class ChatController {
+
+    private static final Logger log = LoggerFactory.getLogger(ChatController.class);
 
     private static final int MAX_OUTPUT_CHARS = 6000;
 
@@ -41,19 +49,22 @@ public class ChatController {
     private final BuiltinToolCatalog builtinToolCatalog;
     private final HttpToolCallbackFactory httpToolCallbackFactory;
     private final ToolEventRegistry toolEventRegistry;
+    private final ChatToolEventRepository toolEventRepository;
 
     public ChatController(ChatClient chatClient,
                           ChatSessionService chatSessionService,
                           AssistantService assistantService,
                           BuiltinToolCatalog builtinToolCatalog,
                           HttpToolCallbackFactory httpToolCallbackFactory,
-                          ToolEventRegistry toolEventRegistry) {
+                          ToolEventRegistry toolEventRegistry,
+                          ChatToolEventRepository toolEventRepository) {
         this.chatClient = chatClient;
         this.chatSessionService = chatSessionService;
         this.assistantService = assistantService;
         this.builtinToolCatalog = builtinToolCatalog;
         this.httpToolCallbackFactory = httpToolCallbackFactory;
         this.toolEventRegistry = toolEventRegistry;
+        this.toolEventRepository = toolEventRepository;
     }
 
     public record Chunk(String text) {}
@@ -84,15 +95,32 @@ public class ChatController {
         Sinks.EmitFailureHandler emitHandler =
                 Sinks.EmitFailureHandler.busyLooping(Duration.ofMillis(50));
 
+        // Tool events are persisted to chat_tool_event so they survive reload (Spring AI chat
+        // memory stores only message text, not tool call/result data). Tag each event with the
+        // assistant-turn index this exchange will occupy so it re-attaches to the right bubble.
+        int turnIndex = (int) chatSessionService.assistantMessageCount(sessionId);
+        AtomicInteger seq = new AtomicInteger(0);
+        Map<String, String[]> pendingCalls = new ConcurrentHashMap<>();
+
         toolEventRegistry.register(requestId, new ToolEventSink() {
             @Override
             public void toolCall(String id, String name, String input) {
+                pendingCalls.put(id, new String[] { name, input });
                 toolSink.emitNext(sse("tool", new ToolCallEvent(id, name, input)), emitHandler);
             }
 
             @Override
             public void toolResult(String id, String output, boolean error) {
                 toolSink.emitNext(sse("tool_result", new ToolResultEvent(id, truncate(output), error)), emitHandler);
+                String[] call = pendingCalls.remove(id);
+                String name = call != null ? call[0] : "";
+                String input = call != null ? call[1] : null;
+                try {
+                    toolEventRepository.save(sessionId, turnIndex, seq.getAndIncrement(),
+                            id, name, input, output, error, Instant.now().getEpochSecond());
+                } catch (RuntimeException e) {
+                    log.warn("Failed to persist tool event for session {}: {}", sessionId, e.getMessage());
+                }
             }
         });
 

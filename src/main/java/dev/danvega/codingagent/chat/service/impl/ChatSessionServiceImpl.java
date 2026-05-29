@@ -5,18 +5,25 @@ import dev.danvega.codingagent.assistant.service.AssistantService;
 import dev.danvega.codingagent.chat.dto.request.UpdateSessionRequest;
 import dev.danvega.codingagent.chat.dto.response.ChatMessageDto;
 import dev.danvega.codingagent.chat.dto.response.ChatSessionDto;
+import dev.danvega.codingagent.chat.dto.response.ToolCallDto;
 import dev.danvega.codingagent.chat.entity.ChatSession;
+import dev.danvega.codingagent.chat.entity.ChatToolEvent;
 import dev.danvega.codingagent.chat.repo.ChatSessionRepository;
+import dev.danvega.codingagent.chat.repo.ChatToolEventRepository;
 import dev.danvega.codingagent.chat.service.ChatSessionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -25,15 +32,18 @@ public class ChatSessionServiceImpl implements ChatSessionService {
     private static final String DEFAULT_TITLE = "New chat";
 
     private final ChatSessionRepository repository;
+    private final ChatToolEventRepository toolEventRepository;
     private final ChatMemory chatMemory;
     private final ChatClient titleChatClient;
     private final AssistantService assistantService;
 
     public ChatSessionServiceImpl(ChatSessionRepository repository,
+                                  ChatToolEventRepository toolEventRepository,
                                   ChatMemory chatMemory,
                                   @Qualifier("titleChatClient") ChatClient titleChatClient,
                                   AssistantService assistantService) {
         this.repository = repository;
+        this.toolEventRepository = toolEventRepository;
         this.chatMemory = chatMemory;
         this.titleChatClient = titleChatClient;
         this.assistantService = assistantService;
@@ -61,13 +71,39 @@ public class ChatSessionServiceImpl implements ChatSessionService {
     @Override
     public List<ChatMessageDto> messages(String id) {
         requireSession(id);
+
+        // Tool events were persisted separately (Spring AI chat memory does not store tool
+        // call/result data). Group them by the assistant-turn index they belong to so each
+        // assistant message can re-render its tool cards on reload.
+        Map<Integer, List<ToolCallDto>> toolsByTurn = toolEventRepository.findBySession(id).stream()
+                .collect(Collectors.groupingBy(
+                        ChatToolEvent::getTurnIndex,
+                        Collectors.mapping(this::toToolCallDto, Collectors.toList())));
+
+        List<ChatMessageDto> result = new ArrayList<>();
+        int assistantIndex = 0;
+        for (Message m : chatMemory.get(id)) {
+            if (m.getMessageType() == MessageType.USER) {
+                result.add(new ChatMessageDto("user", m.getText()));
+            } else if (m.getMessageType() == MessageType.ASSISTANT) {
+                List<ToolCallDto> tools = toolsByTurn.get(assistantIndex);
+                result.add(new ChatMessageDto("assistant", m.getText(), tools));
+                assistantIndex++;
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public long assistantMessageCount(String id) {
         return chatMemory.get(id).stream()
-                .filter(m -> m.getMessageType() == MessageType.USER
-                        || m.getMessageType() == MessageType.ASSISTANT)
-                .map(m -> new ChatMessageDto(
-                        m.getMessageType() == MessageType.USER ? "user" : "assistant",
-                        m.getText()))
-                .toList();
+                .filter(m -> m.getMessageType() == MessageType.ASSISTANT)
+                .count();
+    }
+
+    private ToolCallDto toToolCallDto(ChatToolEvent e) {
+        return new ToolCallDto(e.getCallId(), e.getToolName(), e.getToolInput(),
+                e.getToolOutput(), e.isError());
     }
 
     @Override
