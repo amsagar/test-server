@@ -9,7 +9,10 @@ spring:
   sql:
     init:
       mode: always
-      schema-locations: classpath:sql-models/chat-session-model.sql
+      schema-locations:
+        - classpath:sql-models/chat-session-model.sql
+        - classpath:sql-models/assistant-model.sql
+        - classpath:sql-models/agent-tool-model.sql
   ai:
     azure:
       openai:
@@ -23,5 +26,3 @@ spring:
         repository:
           jdbc:
             initialize-schema: always
-agent:
-  working-dir: /Users/sagarpatil/Downloads/dummy-server-1

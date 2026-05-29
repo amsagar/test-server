@@ -1,0 +1,31 @@
+package dev.danvega.codingagent.tool.runtime;
+
+import dev.danvega.codingagent.tool.repo.AgentToolRepository;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+/**
+ * Builds runtime {@link ToolCallback}s for the HTTP tools linked to an assistant.
+ */
+@Component
+public class HttpToolCallbackFactory {
+
+    private final AgentToolRepository toolRepository;
+    private final HttpToolExecutor executor;
+
+    public HttpToolCallbackFactory(AgentToolRepository toolRepository, HttpToolExecutor executor) {
+        this.toolRepository = toolRepository;
+        this.executor = executor;
+    }
+
+    public List<ToolCallback> callbacksForAssistant(String assistantId) {
+        if (assistantId == null || assistantId.isBlank()) {
+            return List.of();
+        }
+        return toolRepository.findByAssistant(assistantId).stream()
+                .map(tool -> (ToolCallback) new HttpToolCallback(tool, executor))
+                .toList();
+    }
+}

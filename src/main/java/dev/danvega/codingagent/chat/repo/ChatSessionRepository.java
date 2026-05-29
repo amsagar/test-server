@@ -23,14 +23,15 @@ public class ChatSessionRepository {
         this.sqlQueryLoader = sqlQueryLoader;
     }
 
-    public String create(String title, long now) {
+    public String create(String title, String assistantId, long now) {
         String sql = sqlQueryLoader.getQuery("CHAT.SESSION.CREATE");
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, new String[] { "id" });
             ps.setString(1, title);
-            ps.setLong(2, now);
+            ps.setString(2, assistantId);
             ps.setLong(3, now);
+            ps.setLong(4, now);
             return ps;
         }, keyHolder);
         Object id = keyHolder.getKeys().get("id");
@@ -72,6 +73,7 @@ public class ChatSessionRepository {
                 rs.getString("id"),
                 rs.getString("title"),
                 rs.getBoolean("archived"),
+                rs.getString("assistant_id"),
                 rs.getLong("created_at"),
                 rs.getLong("updated_at")
         );

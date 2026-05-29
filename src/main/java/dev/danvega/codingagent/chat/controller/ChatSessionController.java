@@ -31,8 +31,9 @@ public class ChatSessionController {
     }
 
     @PostMapping
-    public ResponseEntity<ChatSessionDto> create() {
-        return ResponseEntity.ok(chatSessionService.create());
+    public ResponseEntity<ChatSessionDto> create(
+            @RequestParam(required = false) String assistantId) {
+        return ResponseEntity.ok(chatSessionService.create(assistantId));
     }
 
     @GetMapping

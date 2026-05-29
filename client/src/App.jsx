@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { api, relativeTime } from "./api";
+import Modal from "./components/Modal";
+import AssistantsPanel from "./components/AssistantsPanel";
+import ToolsPanel from "./components/ToolsPanel";
+import AuthProfilesPanel from "./components/AuthProfilesPanel";
 
 export default function App() {
   const [sessions, setSessions] = useState([]);
@@ -11,12 +15,21 @@ export default function App() {
   const [streaming, setStreaming] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState("");
+  const [assistants, setAssistants] = useState([]);
+  const [selectedAssistantId, setSelectedAssistantId] = useState("");
+  const [showAssistants, setShowAssistants] = useState(false);
+  const [showTools, setShowTools] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const esRef = useRef(null);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     refreshSessions(showArchived);
   }, [showArchived]);
+
+  useEffect(() => {
+    refreshAssistants();
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
@@ -32,6 +45,22 @@ export default function App() {
     }
   }
 
+  async function refreshAssistants() {
+    try {
+      const list = await api.listAssistants();
+      setAssistants(list);
+      setSelectedAssistantId((prev) =>
+        prev && list.some((a) => a.id === prev) ? prev : list[0]?.id || ""
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function assistantName(id) {
+    return assistants.find((a) => a.id === id)?.name || "Assistant";
+  }
+
   async function openSession(id) {
     setCurrentId(id);
     try {
@@ -43,7 +72,7 @@ export default function App() {
   }
 
   async function newChat() {
-    const s = await api.createSession();
+    const s = await api.createSession(selectedAssistantId || undefined);
     setSessions((prev) => [s, ...prev]);
     setShowArchived(false);
     setCurrentId(s.id);
@@ -56,7 +85,7 @@ export default function App() {
 
     let sid = currentId;
     if (!sid) {
-      const s = await api.createSession();
+      const s = await api.createSession(selectedAssistantId || undefined);
       sid = s.id;
       setSessions((prev) => [s, ...prev]);
       setCurrentId(sid);
@@ -166,6 +195,41 @@ export default function App() {
           + New chat
         </button>
 
+        <div className="assistant-picker">
+          <select
+            value={selectedAssistantId}
+            onChange={(e) => setSelectedAssistantId(e.target.value)}
+          >
+            {assistants.length === 0 && <option value="">No assistants</option>}
+            {assistants.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+          <button
+            className="icon-btn"
+            title="Manage assistants"
+            onClick={() => setShowAssistants(true)}
+          >
+            ⚙
+          </button>
+          <button
+            className="icon-btn"
+            title="Manage HTTP tools"
+            onClick={() => setShowTools(true)}
+          >
+            🔧
+          </button>
+          <button
+            className="icon-btn"
+            title="Manage auth profiles"
+            onClick={() => setShowAuth(true)}
+          >
+            🔑
+          </button>
+        </div>
+
         <div className="toggle">
           <button
             className={!showArchived ? "active" : ""}
@@ -230,7 +294,22 @@ export default function App() {
       </aside>
 
       <main className="chat">
-        <header className="header">🤖 Coding Agent</header>
+        <header className="header">
+          <span>🤖 Coding Agent</span>
+          {currentId ? (
+            <span className="header-assistant">
+              {assistantName(
+                sessions.find((s) => s.id === currentId)?.assistantId
+              )}
+            </span>
+          ) : (
+            selectedAssistantId && (
+              <span className="header-assistant">
+                {assistantName(selectedAssistantId)}
+              </span>
+            )
+          )}
+        </header>
 
         <div className="messages" ref={scrollRef}>
           {messages.length === 0 && (
@@ -277,6 +356,28 @@ export default function App() {
           </button>
         </div>
       </main>
+
+      {showAssistants && (
+        <Modal
+          title="Manage assistants"
+          wide
+          onClose={() => setShowAssistants(false)}
+        >
+          <AssistantsPanel onChanged={refreshAssistants} />
+        </Modal>
+      )}
+
+      {showTools && (
+        <Modal title="HTTP tools" wide onClose={() => setShowTools(false)}>
+          <ToolsPanel />
+        </Modal>
+      )}
+
+      {showAuth && (
+        <Modal title="Auth profiles" wide onClose={() => setShowAuth(false)}>
+          <AuthProfilesPanel />
+        </Modal>
+      )}
     </div>
   );
 }

@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface ChatSessionService {
 
-    ChatSessionDto create();
+    ChatSessionDto create(String assistantId);
 
     List<ChatSessionDto> list(boolean archived);
 
@@ -19,4 +19,6 @@ public interface ChatSessionService {
     void touchAndMaybeTitle(String id, String firstMessage);
 
     void delete(String id);
+
+    String resolveAssistantId(String sessionId);
 }

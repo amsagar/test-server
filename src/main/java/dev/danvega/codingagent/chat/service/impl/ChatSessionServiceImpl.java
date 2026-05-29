@@ -1,6 +1,7 @@
 package dev.danvega.codingagent.chat.service.impl;
 
 import dev.danvega.codingagent.applicationconfig.exceptions.ResourceNotFoundException;
+import dev.danvega.codingagent.assistant.service.AssistantService;
 import dev.danvega.codingagent.chat.dto.request.UpdateSessionRequest;
 import dev.danvega.codingagent.chat.dto.response.ChatMessageDto;
 import dev.danvega.codingagent.chat.dto.response.ChatSessionDto;
@@ -26,20 +27,25 @@ public class ChatSessionServiceImpl implements ChatSessionService {
     private final ChatSessionRepository repository;
     private final ChatMemory chatMemory;
     private final ChatClient titleChatClient;
+    private final AssistantService assistantService;
 
     public ChatSessionServiceImpl(ChatSessionRepository repository,
                                   ChatMemory chatMemory,
-                                  @Qualifier("titleChatClient") ChatClient titleChatClient) {
+                                  @Qualifier("titleChatClient") ChatClient titleChatClient,
+                                  AssistantService assistantService) {
         this.repository = repository;
         this.chatMemory = chatMemory;
         this.titleChatClient = titleChatClient;
+        this.assistantService = assistantService;
     }
 
     @Override
-    public ChatSessionDto create() {
+    public ChatSessionDto create(String assistantId) {
         long now = Instant.now().getEpochSecond();
-        String id = repository.create(DEFAULT_TITLE, now);
-        log.info("Created chat session {}", id);
+        String resolvedAssistantId = (assistantId == null || assistantId.isBlank())
+                ? assistantService.defaultAssistantId() : assistantId;
+        String id = repository.create(DEFAULT_TITLE, resolvedAssistantId, now);
+        log.info("Created chat session {} (assistant {})", id, resolvedAssistantId);
         return repository.findById(id)
                 .map(this::toDto)
                 .orElseThrow(() -> new IllegalStateException("Session not found after create: " + id));
@@ -117,6 +123,14 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         log.info("Deleted chat session {}", id);
     }
 
+    @Override
+    public String resolveAssistantId(String sessionId) {
+        return repository.findById(sessionId)
+                .map(ChatSession::getAssistantId)
+                .filter(a -> a != null && !a.isBlank())
+                .orElseGet(assistantService::defaultAssistantId);
+    }
+
     private void requireSession(String id) {
         if (repository.findById(id).isEmpty()) {
             throw new ResourceNotFoundException("Session not found: " + id);
@@ -128,6 +142,7 @@ public class ChatSessionServiceImpl implements ChatSessionService {
                 .id(s.getId())
                 .title(s.getTitle())
                 .archived(s.isArchived())
+                .assistantId(s.getAssistantId())
                 .createdAt(s.getCreatedAt())
                 .updatedAt(s.getUpdatedAt())
                 .build();

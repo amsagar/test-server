@@ -13,6 +13,7 @@ public class ChatSessionDto {
     private String id;
     private String title;
     private boolean archived;
+    private String assistantId;
     private Long createdAt;
     private Long updatedAt;
 }

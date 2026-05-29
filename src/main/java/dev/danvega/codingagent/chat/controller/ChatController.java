@@ -1,12 +1,17 @@
 package dev.danvega.codingagent.chat.controller;
 
 import dev.danvega.codingagent.applicationconfig.constants.ApiConstants;
+import dev.danvega.codingagent.assistant.entity.Assistant;
+import dev.danvega.codingagent.assistant.service.AssistantService;
 import dev.danvega.codingagent.chat.service.ChatSessionService;
+import dev.danvega.codingagent.chat.tooling.BuiltinToolCatalog;
+import dev.danvega.codingagent.chat.tooling.EventEmittingToolCallback;
 import dev.danvega.codingagent.chat.tooling.ToolEventRegistry;
 import dev.danvega.codingagent.chat.tooling.ToolEventSink;
+import dev.danvega.codingagent.tool.runtime.HttpToolCallbackFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -18,6 +23,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,17 +37,23 @@ public class ChatController {
 
     private final ChatClient chatClient;
     private final ChatSessionService chatSessionService;
+    private final AssistantService assistantService;
+    private final BuiltinToolCatalog builtinToolCatalog;
+    private final HttpToolCallbackFactory httpToolCallbackFactory;
     private final ToolEventRegistry toolEventRegistry;
-    private final String workingDir;
 
     public ChatController(ChatClient chatClient,
                           ChatSessionService chatSessionService,
-                          ToolEventRegistry toolEventRegistry,
-                          @Value("${agent.working-dir}") String workingDir) {
+                          AssistantService assistantService,
+                          BuiltinToolCatalog builtinToolCatalog,
+                          HttpToolCallbackFactory httpToolCallbackFactory,
+                          ToolEventRegistry toolEventRegistry) {
         this.chatClient = chatClient;
         this.chatSessionService = chatSessionService;
+        this.assistantService = assistantService;
+        this.builtinToolCatalog = builtinToolCatalog;
+        this.httpToolCallbackFactory = httpToolCallbackFactory;
         this.toolEventRegistry = toolEventRegistry;
-        this.workingDir = workingDir;
     }
 
     public record Chunk(String text) {}
@@ -53,6 +66,18 @@ public class ChatController {
     public Flux<ServerSentEvent<Object>> stream(@RequestParam String sessionId,
                                                 @RequestParam String message) {
         chatSessionService.touchAndMaybeTitle(sessionId, message);
+
+        String assistantId = chatSessionService.resolveAssistantId(sessionId);
+        String systemPrompt = "";
+        List<ToolCallback> toolCallbacks = new ArrayList<>();
+        if (assistantId != null) {
+            Assistant assistant = assistantService.requireEntity(assistantId);
+            systemPrompt = assistant.getSystemPrompt() == null ? ""
+                    : assistant.getSystemPrompt();
+            toolCallbacks.addAll(builtinToolCatalog.callbacksFor(
+                    assistantService.builtinToolKeys(assistant)));
+            toolCallbacks.addAll(httpToolCallbackFactory.callbacksForAssistant(assistantId));
+        }
 
         String requestId = UUID.randomUUID().toString();
         Sinks.Many<ServerSentEvent<Object>> toolSink = Sinks.many().multicast().onBackpressureBuffer();
@@ -71,11 +96,19 @@ public class ChatController {
             }
         });
 
-        Flux<ServerSentEvent<Object>> tokens = chatClient.prompt(message)
-                .toolContext(Map.of(
-                        "workingDir", workingDir,
-                        ToolEventRegistry.REQUEST_ID, requestId))
-                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, sessionId))
+        List<ToolCallback> instrumented = toolCallbacks.stream()
+                .map(cb -> (ToolCallback) new EventEmittingToolCallback(cb, toolEventRegistry))
+                .toList();
+
+        ChatClient.ChatClientRequestSpec request = chatClient.prompt(message)
+                .toolContext(Map.of(ToolEventRegistry.REQUEST_ID, requestId))
+                .toolCallbacks(instrumented)
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, sessionId));
+        if (!systemPrompt.isBlank()) {
+            request = request.system(systemPrompt);
+        }
+
+        Flux<ServerSentEvent<Object>> tokens = request
                 .stream()
                 .content()
                 .map(text -> sse("message", new Chunk(text)))
