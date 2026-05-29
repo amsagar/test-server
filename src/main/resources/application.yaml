@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: codingagent
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/codingagent
+    username: postgres
+    password: ivoyant
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql-models/chat-session-model.sql
+  ai:
+    azure:
+      openai:
+        api-key: 6P1vmDOsmn4ZmAvat7DhqSBtNZYVMNa0j26yaSZJNlb8iYGtb2mSJQQJ99CEACHYHv6XJ3w3AAAAACOGgt1l
+        endpoint: https://aif-eu2-ov-np-01.openai.azure.com
+        chat:
+          options:
+            deployment-name: gpt-5.2-chat
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
+agent:
+  working-dir: /Users/sagarpatil/Downloads/dummy-server-1
