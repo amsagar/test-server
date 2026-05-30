@@ -11,4 +11,5 @@ public final class ApiConstants {
     public static final String ASSISTANTS_PATH = BASE_PATH + "/assistants";
     public static final String TOOLS_PATH = BASE_PATH + "/tools";
     public static final String TOOL_AUTH_PATH = BASE_PATH + "/tool-auth";
+    public static final String SKILLS_PATH = BASE_PATH + "/skills";
 }

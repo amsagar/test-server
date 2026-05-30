@@ -114,6 +114,35 @@ export const api = {
 
   deleteAuthProfile: (id) =>
     fetch(`/api/tool-auth/${id}`, { method: "DELETE" }).then(ok),
+
+  // --- agent skills ---
+  listSkills: (assistantId) =>
+    fetch(`/api/skills?assistantId=${encodeURIComponent(assistantId)}`).then(json),
+
+  uploadSkill: (assistantId, file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    // No Content-Type header: the browser sets the multipart boundary itself.
+    return fetch(`/api/skills?assistantId=${encodeURIComponent(assistantId)}`, {
+      method: "POST",
+      body: fd,
+    }).then(json);
+  },
+
+  updateSkill: (id, body) =>
+    fetch(`/api/skills/${id}`, {
+      method: "PATCH",
+      headers: jsonHeaders,
+      body: JSON.stringify(body),
+    }).then(json),
+
+  replaceSkillFile: (id, file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return fetch(`/api/skills/${id}`, { method: "PATCH", body: fd }).then(json);
+  },
+
+  deleteSkill: (id) => fetch(`/api/skills/${id}`, { method: "DELETE" }).then(ok),
 };
 
 export function relativeTime(epochSeconds) {

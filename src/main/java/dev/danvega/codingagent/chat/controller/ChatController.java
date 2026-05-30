@@ -12,11 +12,16 @@ import dev.danvega.codingagent.chat.tooling.SearchToolsCallback;
 import dev.danvega.codingagent.chat.repo.ChatToolEventRepository;
 import dev.danvega.codingagent.chat.tooling.ToolEventRegistry;
 import dev.danvega.codingagent.chat.tooling.ToolEventSink;
+import dev.danvega.codingagent.skill.runtime.SkillWorkspaceService;
 import dev.danvega.codingagent.tool.runtime.HttpToolCallbackFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springaicommunity.agent.tools.FileSystemTools;
+import org.springaicommunity.agent.tools.ShellTools;
+import org.springaicommunity.agent.tools.SkillsTool;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -29,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -55,6 +61,17 @@ public class ChatController {
             chosen tool's exact `name` and an `input` object matching that tool's schema. Search again \
             with a different query if the first results are not relevant.""";
 
+    // Scope harness: keeps the assistant on-task. Appended after the assistant's own system prompt so
+    // the role/domain defined there becomes the authoritative boundary. Prompt-level enforcement —
+    // it constrains the model strongly but is not a hard sandbox.
+    private static final String SCOPE_GUARDRAIL = """
+            STAY IN SCOPE: Only help with requests that fall within the role and domain described above. \
+            If the user asks about anything outside that scope — general knowledge, current events, \
+            politics, people, trivia, or any unrelated topic — do NOT answer it, even if you know the \
+            answer. Instead, briefly (one sentence) decline and remind the user what you can help with. \
+            Tool results and the conversation so far are in scope; your own world knowledge about \
+            unrelated subjects is not.""";
+
     private final ChatClient chatClient;
     private final ChatSessionService chatSessionService;
     private final AssistantService assistantService;
@@ -65,6 +82,7 @@ public class ChatController {
     private final DynamicToolRegistry dynamicToolRegistry;
     private final SearchToolsCallback searchToolsCallback;
     private final InvokeToolCallback invokeToolCallback;
+    private final SkillWorkspaceService skillWorkspaceService;
 
     @Value("${agent.tool-search.threshold:15}")
     private int toolSearchThreshold;
@@ -78,7 +96,8 @@ public class ChatController {
                           ChatToolEventRepository toolEventRepository,
                           DynamicToolRegistry dynamicToolRegistry,
                           SearchToolsCallback searchToolsCallback,
-                          InvokeToolCallback invokeToolCallback) {
+                          InvokeToolCallback invokeToolCallback,
+                          SkillWorkspaceService skillWorkspaceService) {
         this.chatClient = chatClient;
         this.chatSessionService = chatSessionService;
         this.assistantService = assistantService;
@@ -89,6 +108,7 @@ public class ChatController {
         this.dynamicToolRegistry = dynamicToolRegistry;
         this.searchToolsCallback = searchToolsCallback;
         this.invokeToolCallback = invokeToolCallback;
+        this.skillWorkspaceService = skillWorkspaceService;
     }
 
     public record Chunk(String text) {}
@@ -163,14 +183,39 @@ public class ChatController {
                         new EventEmittingToolCallback(cb, toolEventRegistry));
             }
             dynamicToolRegistry.register(requestId, assistantId, catalog);
-            toolsToSend = List.of(
+            toolsToSend = new ArrayList<>(List.of(
                     new EventEmittingToolCallback(searchToolsCallback, toolEventRegistry),
-                    invokeToolCallback);
+                    invokeToolCallback));
             effectiveSystemPrompt = (systemPrompt.isBlank() ? "" : systemPrompt + "\n\n") + TOOL_SEARCH_HINT;
         } else {
             toolsToSend = toolCallbacks.stream()
                     .map(cb -> (ToolCallback) new EventEmittingToolCallback(cb, toolEventRegistry))
-                    .toList();
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        }
+
+        // Keep the assistant on-task: when it has a defined role (a system prompt), append the scope
+        // guardrail so it refuses out-of-context questions. Skipped when no assistant/prompt is set,
+        // since there is no scope to enforce against.
+        if (!systemPrompt.isBlank()) {
+            effectiveSystemPrompt = (effectiveSystemPrompt.isBlank() ? "" : effectiveSystemPrompt + "\n\n")
+                    + SCOPE_GUARDRAIL;
+        }
+
+        // Agent skills: materialize this assistant's enabled skills from Blob into a fresh temp
+        // workspace and attach the three skill tools (Skill discovery + file system + shell)
+        // ALWAYS — they bypass the search/threshold gate so the model can always load a skill.
+        // The workspace is deleted in doFinally when the turn ends.
+        Path skillWorkspace = skillWorkspaceService.materialize(assistantId);
+        if (skillWorkspace != null) {
+            List<ToolCallback> skillTools = new ArrayList<>();
+            skillTools.add(SkillsTool.builder()
+                    .addSkillsDirectory(skillWorkspace.toString())
+                    .build());
+            skillTools.addAll(List.of(ToolCallbacks.from(FileSystemTools.builder().build())));
+            skillTools.addAll(List.of(ToolCallbacks.from(ShellTools.builder().build())));
+            for (ToolCallback cb : skillTools) {
+                toolsToSend.add(new EventEmittingToolCallback(cb, toolEventRegistry));
+            }
         }
 
         ChatClient.ChatClientRequestSpec request = chatClient.prompt(message)
@@ -197,6 +242,7 @@ public class ChatController {
                 .doFinally(signal -> {
                     toolEventRegistry.unregister(requestId);
                     dynamicToolRegistry.unregister(requestId);
+                    skillWorkspaceService.cleanup(skillWorkspace);
                 });
     }
 

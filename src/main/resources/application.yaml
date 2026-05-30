@@ -1,6 +1,10 @@
 spring:
   application:
     name: codingagent
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://localhost:5432/codingagent
@@ -14,6 +18,7 @@ spring:
         - classpath:sql-models/assistant-model.sql
         - classpath:sql-models/agent-tool-model.sql
         - classpath:sql-models/tool-embedding-model.sql
+        - classpath:sql-models/agent-skill-model.sql
         - classpath:sql-models/chat-tool-event-model.sql
   ai:
     azure:
@@ -31,3 +36,8 @@ spring:
         repository:
           jdbc:
             initialize-schema: always
+azure:
+  storage:
+    blob:
+      connection-string: "DefaultEndpointsProtocol=https;AccountName=openfga;AccountKey=3qRPjRUAleZDRiDuHaZxCcrPFLAABAeLK/lSIuIDPTTo1CBgnzFIg+TvPvynr1sL5EtL7aIofTix+AStN2labg==;EndpointSuffix=core.windows.net"
+      skills-container: agent-skills

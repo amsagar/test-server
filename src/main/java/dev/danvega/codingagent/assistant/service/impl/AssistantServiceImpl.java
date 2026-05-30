@@ -9,45 +9,22 @@ import dev.danvega.codingagent.assistant.entity.Assistant;
 import dev.danvega.codingagent.assistant.repo.AssistantRepository;
 import dev.danvega.codingagent.assistant.service.AssistantService;
 import dev.danvega.codingagent.chat.tooling.BuiltinToolCatalog;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StreamUtils;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 
 @Service
-@Slf4j
 public class AssistantServiceImpl implements AssistantService {
 
     private final AssistantRepository repository;
     private final BuiltinToolCatalog builtinToolCatalog;
-    private final Resource defaultPrompt;
 
     public AssistantServiceImpl(AssistantRepository repository,
-                                BuiltinToolCatalog builtinToolCatalog,
-                                @Value("classpath:prompts/coding-assistant-system.md") Resource defaultPrompt) {
+                                BuiltinToolCatalog builtinToolCatalog) {
         this.repository = repository;
         this.builtinToolCatalog = builtinToolCatalog;
-        this.defaultPrompt = defaultPrompt;
-    }
-
-    @EventListener(ApplicationReadyEvent.class)
-    public void bootstrapDefault() {
-        if (repository.count() > 0) {
-            return;
-        }
-        long now = Instant.now().getEpochSecond();
-        repository.create("Coding Assistant", readDefaultPrompt(),
-                String.join(",", builtinToolCatalog.keys()), now);
-        log.info("Seeded default 'Coding Assistant'");
     }
 
     @Override
@@ -150,14 +127,5 @@ public class AssistantServiceImpl implements AssistantService {
                 .createdAt(a.getCreatedAt())
                 .updatedAt(a.getUpdatedAt())
                 .build();
-    }
-
-    private String readDefaultPrompt() {
-        try {
-            return StreamUtils.copyToString(defaultPrompt.getInputStream(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.warn("Could not read default prompt: {}", e.getMessage());
-            return "You are a helpful assistant.";
-        }
     }
 }

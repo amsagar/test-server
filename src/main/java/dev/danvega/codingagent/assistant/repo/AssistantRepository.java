@@ -61,11 +61,6 @@ public class AssistantRepository {
         return jdbcTemplate.update(sqlQueryLoader.getQuery("ASSISTANT.DELETE"), id);
     }
 
-    public long count() {
-        Long n = jdbcTemplate.queryForObject(sqlQueryLoader.getQuery("ASSISTANT.COUNT"), Long.class);
-        return n == null ? 0 : n;
-    }
-
     public void clearTools(String assistantId) {
         jdbcTemplate.update(sqlQueryLoader.getQuery("ASSISTANT.TOOL.CLEAR"), assistantId);
     }

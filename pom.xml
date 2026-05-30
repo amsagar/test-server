@@ -72,6 +72,13 @@
 			<version>0.4.2</version>
 		</dependency>
 
+		<!-- Azure Blob Storage (skill bundles) -->
+		<dependency>
+			<groupId>com.azure</groupId>
+			<artifactId>azure-storage-blob</artifactId>
+			<version>12.33.3</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
