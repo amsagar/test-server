@@ -196,6 +196,41 @@ export const api = {
       headers: jsonHeaders,
       body: JSON.stringify({ styleId: styleId || "" }),
     }).then(json),
+
+  // --- MCP servers (scoped per assistant) ---
+  listMcpServers: (assistantId) =>
+    fetch(`/api/mcp-servers?assistantId=${encodeURIComponent(assistantId)}`).then(json),
+
+  getMcpServer: (id) => fetch(`/api/mcp-servers/${id}`).then(json),
+
+  createMcpServer: (assistantId, body) =>
+    fetch(`/api/mcp-servers?assistantId=${encodeURIComponent(assistantId)}`, {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify(body),
+    }).then(json),
+
+  updateMcpServer: (id, body) =>
+    fetch(`/api/mcp-servers/${id}`, {
+      method: "PATCH",
+      headers: jsonHeaders,
+      body: JSON.stringify(body),
+    }).then(json),
+
+  deleteMcpServer: (id) =>
+    fetch(`/api/mcp-servers/${id}`, { method: "DELETE" }).then(ok),
+
+  discoverMcpServer: (id) =>
+    fetch(`/api/mcp-servers/${id}/discover`, { method: "POST" }).then(json),
+
+  listMcpTools: (id) => fetch(`/api/mcp-servers/${id}/tools`).then(json),
+
+  setMcpToolEnabled: (id, toolId, enabled) =>
+    fetch(`/api/mcp-servers/${id}/tools/${toolId}`, {
+      method: "PATCH",
+      headers: jsonHeaders,
+      body: JSON.stringify({ enabled }),
+    }).then(json),
 };
 
 export function relativeTime(epochSeconds) {

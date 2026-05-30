@@ -14,4 +14,5 @@ public final class ApiConstants {
     public static final String SKILLS_PATH = BASE_PATH + "/skills";
     public static final String DOCUMENTS_PATH = BASE_PATH + "/documents";
     public static final String RESPONSE_STYLES_PATH = BASE_PATH + "/response-styles";
+    public static final String MCP_SERVERS_PATH = BASE_PATH + "/mcp-servers";
 }

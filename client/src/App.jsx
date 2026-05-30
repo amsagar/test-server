@@ -8,6 +8,7 @@ import AuthProfilesPanel from "./components/AuthProfilesPanel";
 import SkillsPanel from "./components/SkillsPanel";
 import DocumentsPanel from "./components/DocumentsPanel";
 import StylesPanel from "./components/StylesPanel";
+import McpServersPanel from "./components/McpServersPanel";
 
 export default function App() {
   const [sessions, setSessions] = useState([]);
@@ -28,6 +29,7 @@ export default function App() {
   const [showSkills, setShowSkills] = useState(false);
   const [showDocuments, setShowDocuments] = useState(false);
   const [showStyles, setShowStyles] = useState(false);
+  const [showMcp, setShowMcp] = useState(false);
   const [styles, setStyles] = useState([]);
   const esRef = useRef(null);
   const scrollRef = useRef(null);
@@ -319,6 +321,13 @@ export default function App() {
           >
             🎭
           </button>
+          <button
+            className="icon-btn"
+            title="Manage MCP servers"
+            onClick={() => setShowMcp(true)}
+          >
+            🧩
+          </button>
         </div>
 
         <div className="toggle">
@@ -560,6 +569,12 @@ export default function App() {
       {showStyles && (
         <Modal title="Response styles" wide onClose={() => setShowStyles(false)}>
           <StylesPanel onChanged={refreshStyles} />
+        </Modal>
+      )}
+
+      {showMcp && (
+        <Modal title="MCP servers" wide onClose={() => setShowMcp(false)}>
+          <McpServersPanel />
         </Modal>
       )}
     </div>

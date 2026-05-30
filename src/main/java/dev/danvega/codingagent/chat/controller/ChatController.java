@@ -15,6 +15,8 @@ import dev.danvega.codingagent.chat.tooling.ToolEventRegistry;
 import dev.danvega.codingagent.chat.tooling.ToolEventSink;
 import dev.danvega.codingagent.document.dto.response.DocumentDto;
 import dev.danvega.codingagent.document.service.DocumentService;
+import dev.danvega.codingagent.mcp.runtime.AssistantMcpTools;
+import dev.danvega.codingagent.mcp.runtime.McpToolCallbackFactory;
 import dev.danvega.codingagent.skill.runtime.SkillWorkspaceService;
 import dev.danvega.codingagent.style.service.ResponseStyleService;
 import dev.danvega.codingagent.tool.runtime.HttpToolCallbackFactory;
@@ -89,6 +91,7 @@ public class ChatController {
     private final AssistantService assistantService;
     private final BuiltinToolCatalog builtinToolCatalog;
     private final HttpToolCallbackFactory httpToolCallbackFactory;
+    private final McpToolCallbackFactory mcpToolCallbackFactory;
     private final ToolEventRegistry toolEventRegistry;
     private final ChatToolEventRepository toolEventRepository;
     private final DynamicToolRegistry dynamicToolRegistry;
@@ -121,6 +124,7 @@ public class ChatController {
                           AssistantService assistantService,
                           BuiltinToolCatalog builtinToolCatalog,
                           HttpToolCallbackFactory httpToolCallbackFactory,
+                          McpToolCallbackFactory mcpToolCallbackFactory,
                           ToolEventRegistry toolEventRegistry,
                           ChatToolEventRepository toolEventRepository,
                           DynamicToolRegistry dynamicToolRegistry,
@@ -137,6 +141,7 @@ public class ChatController {
         this.assistantService = assistantService;
         this.builtinToolCatalog = builtinToolCatalog;
         this.httpToolCallbackFactory = httpToolCallbackFactory;
+        this.mcpToolCallbackFactory = mcpToolCallbackFactory;
         this.toolEventRegistry = toolEventRegistry;
         this.toolEventRepository = toolEventRepository;
         this.dynamicToolRegistry = dynamicToolRegistry;
@@ -213,6 +218,15 @@ public class ChatController {
                 return Flux.just(sse("message", new Chunk(redirect)), sse("done", new Chunk("")));
             }
         }
+
+        // MCP tools: open live clients to the assistant's enabled MCP servers and fold their enabled
+        // tools into the same callback list as HTTP/builtin tools. Done AFTER the scope-guard early
+        // return so we never open (and leak) connections for a blocked message. The live clients are
+        // owned by mcpTools and closed in doFinally when the turn ends.
+        final AssistantMcpTools mcpTools = assistantId != null
+                ? mcpToolCallbackFactory.callbacksForAssistant(assistantId)
+                : AssistantMcpTools.empty();
+        toolCallbacks.addAll(mcpTools.callbacks());
 
         String requestId = UUID.randomUUID().toString();
         Sinks.Many<ServerSentEvent<Object>> toolSink = Sinks.many().multicast().onBackpressureBuffer();
@@ -350,6 +364,7 @@ public class ChatController {
                     toolEventRegistry.unregister(requestId);
                     dynamicToolRegistry.unregister(requestId);
                     skillWorkspaceService.cleanup(skillWorkspace);
+                    mcpTools.close();
                 });
     }
 

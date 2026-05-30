@@ -68,6 +68,14 @@
 			<artifactId>spring-ai-starter-model-chat-memory-repository-jdbc</artifactId>
 		</dependency>
 
+		<!-- MCP (Model Context Protocol) client: remote HTTP transports + ToolCallback adapter.
+		     Versioned independently of the spring-ai BOM, so the version is pinned explicitly. -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-mcp-client</artifactId>
+			<version>1.1.4</version>
+		</dependency>
+
 		<!-- JDBC (JdbcTemplate) + Postgres -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
