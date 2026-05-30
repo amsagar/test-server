@@ -15,6 +15,8 @@ export default function App() {
   const [streaming, setStreaming] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState("");
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editValue, setEditValue] = useState("");
   const [assistants, setAssistants] = useState([]);
   const [selectedAssistantId, setSelectedAssistantId] = useState("");
   const [showAssistants, setShowAssistants] = useState(false);
@@ -92,24 +94,14 @@ export default function App() {
     setMessages([]);
   }
 
-  async function send() {
-    const text = input.trim();
-    if (!text || streaming) return;
-
-    let sid = currentId;
-    if (!sid) {
-      const s = await api.createSession(selectedAssistantId || undefined);
-      sid = s.id;
-      setSessions((prev) => [s, ...prev]);
-      setCurrentId(sid);
-    }
-
+  // Append the user + empty assistant placeholders, open the SSE stream, and wire the token /
+  // tool events into the last (assistant) message. Shared by send() and resendFromUser().
+  function runTurn(sid, text) {
     setMessages((m) => [
       ...m,
       { role: "user", content: text },
       { role: "assistant", content: "", tools: [] },
     ]);
-    setInput("");
     setStreaming(true);
 
     const es = new EventSource(
@@ -159,6 +151,39 @@ export default function App() {
       setStreaming(false);
       refreshSessions();
     });
+  }
+
+  async function send() {
+    const text = input.trim();
+    if (!text || streaming) return;
+
+    let sid = currentId;
+    if (!sid) {
+      const s = await api.createSession(selectedAssistantId || undefined);
+      sid = s.id;
+      setSessions((prev) => [s, ...prev]);
+      setCurrentId(sid);
+    }
+
+    setInput("");
+    runTurn(sid, text);
+  }
+
+  // Truncate the session at the given user-message render index (dropping it + everything
+  // after, server-side), then re-run the turn with the given text. Used by Edit, Resend and
+  // Regenerate — all of which reduce to "resend from a user message".
+  async function resendFromUser(userIndex, text) {
+    const trimmed = (text || "").trim();
+    if (streaming || !currentId || userIndex < 0 || !trimmed) return;
+    setEditingIndex(null);
+    try {
+      await api.truncateSession(currentId, userIndex);
+    } catch (e) {
+      console.error(e);
+      return;
+    }
+    setMessages((m) => m.slice(0, userIndex));
+    runTurn(currentId, trimmed);
   }
 
   function onKeyDown(e) {
@@ -348,10 +373,70 @@ export default function App() {
                       )
                     )}
                   </>
+                ) : editingIndex === i ? (
+                  <div className="msg-edit">
+                    <textarea
+                      className="rename-input"
+                      value={editValue}
+                      autoFocus
+                      rows={2}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          resendFromUser(i, editValue);
+                        }
+                        if (e.key === "Escape") setEditingIndex(null);
+                      }}
+                    />
+                    <div className="msg-edit-actions">
+                      <button
+                        onClick={() => resendFromUser(i, editValue)}
+                        disabled={streaming || !editValue.trim()}
+                      >
+                        Save & send
+                      </button>
+                      <button onClick={() => setEditingIndex(null)}>Cancel</button>
+                    </div>
+                  </div>
                 ) : (
                   m.content
                 )}
               </div>
+              {editingIndex === null && !streaming && (
+                <div className="msg-actions">
+                  {m.role === "user" ? (
+                    <>
+                      <button
+                        title="Edit & resend"
+                        onClick={() => {
+                          setEditingIndex(i);
+                          setEditValue(m.content);
+                        }}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        title="Resend"
+                        onClick={() => resendFromUser(i, m.content)}
+                      >
+                        ↻
+                      </button>
+                    </>
+                  ) : (
+                    messages[i - 1]?.role === "user" && (
+                      <button
+                        title="Regenerate"
+                        onClick={() =>
+                          resendFromUser(i - 1, messages[i - 1].content)
+                        }
+                      >
+                        ↻
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

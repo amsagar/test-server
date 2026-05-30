@@ -30,6 +30,12 @@ public class ChatToolEventRepository {
         return jdbcTemplate.query(sql, toolEventRowMapper(), sessionId);
     }
 
+    /** Removes all tool events at or after the given assistant turn (used when truncating a session). */
+    public int deleteFromTurn(String sessionId, int fromTurnInclusive) {
+        String sql = sqlQueryLoader.getQuery("CHAT.TOOL_EVENT.DELETE_FROM_TURN");
+        return jdbcTemplate.update(sql, sessionId, fromTurnInclusive);
+    }
+
     private RowMapper<ChatToolEvent> toolEventRowMapper() {
         return (rs, rowNum) -> new ChatToolEvent(
                 rs.getString("id"),

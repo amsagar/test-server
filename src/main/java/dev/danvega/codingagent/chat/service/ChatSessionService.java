@@ -20,6 +20,8 @@ public interface ChatSessionService {
 
     void touchAndMaybeTitle(String id, String firstMessage);
 
+    void truncateFrom(String id, int messageIndex);
+
     void delete(String id);
 
     String resolveAssistantId(String sessionId);

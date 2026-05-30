@@ -152,6 +152,36 @@ public class ChatSessionServiceImpl implements ChatSessionService {
     }
 
     @Override
+    public void truncateFrom(String id, int messageIndex) {
+        requireSession(id);
+
+        // Keep only USER/ASSISTANT messages, in render order, so messageIndex (the frontend's
+        // flat render index) maps 1:1 onto chat memory. Everything from messageIndex onward is
+        // dropped; the client then re-runs the turn from the (possibly edited) message.
+        List<Message> ordered = chatMemory.get(id).stream()
+                .filter(m -> m.getMessageType() == MessageType.USER
+                        || m.getMessageType() == MessageType.ASSISTANT)
+                .toList();
+        int cut = Math.max(0, Math.min(messageIndex, ordered.size()));
+        List<Message> kept = new ArrayList<>(ordered.subList(0, cut));
+        int assistantKept = (int) kept.stream()
+                .filter(m -> m.getMessageType() == MessageType.ASSISTANT)
+                .count();
+
+        // Spring AI's ChatMemory has no partial delete, so clear and replay the kept prefix
+        // (same saveAll path used in normal operation, so ordering is preserved).
+        chatMemory.clear(id);
+        if (!kept.isEmpty()) {
+            chatMemory.add(id, kept);
+        }
+        // Drop persisted tool events for the dropped turns; turn_index is the assistant-message index.
+        toolEventRepository.deleteFromTurn(id, assistantKept);
+        repository.touch(id, Instant.now().getEpochSecond());
+        log.info("Truncated session {} from message index {} (kept {} assistant turn(s))",
+                id, cut, assistantKept);
+    }
+
+    @Override
     public void delete(String id) {
         requireSession(id);
         repository.delete(id);

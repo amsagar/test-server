@@ -35,6 +35,11 @@ export const api = {
   deleteSession: (id) =>
     fetch(`/api/sessions/${id}`, { method: "DELETE" }).then(ok),
 
+  truncateSession: (id, messageIndex) =>
+    fetch(`/api/sessions/${id}/truncate?messageIndex=${messageIndex}`, {
+      method: "POST",
+    }).then(ok),
+
   // --- assistants ---
   listAssistants: () => fetch(`/api/assistants`).then(json),
 

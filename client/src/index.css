@@ -198,6 +198,69 @@ body {
   border-bottom-left-radius: 4px;
 }
 
+.msg {
+  align-items: flex-end;
+}
+
+.msg-actions {
+  display: none;
+  gap: 2px;
+  align-self: flex-end;
+  margin: 0 4px 2px;
+}
+
+.msg:hover .msg-actions {
+  display: flex;
+}
+
+.msg-actions button {
+  background: transparent;
+  border: none;
+  color: #8a8f99;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.msg-actions button:hover {
+  color: #fff;
+  background: #2f6df6;
+}
+
+.msg-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 280px;
+}
+
+.msg-edit .rename-input {
+  width: 100%;
+  resize: vertical;
+}
+
+.msg-edit-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.msg-edit-actions button {
+  background: #0c0e14;
+  border: 1px solid #2f6df6;
+  color: #e6e6e6;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.msg-edit-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .bubble :is(p, ul, ol):first-child {
   margin-top: 0;
 }

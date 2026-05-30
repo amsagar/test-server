@@ -53,6 +53,13 @@ public class ChatSessionController {
         return ResponseEntity.ok(chatSessionService.update(id, request));
     }
 
+    @PostMapping("/{id}/truncate")
+    public ResponseEntity<Void> truncate(@PathVariable String id,
+                                         @RequestParam int messageIndex) {
+        chatSessionService.truncateFrom(id, messageIndex);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
         chatSessionService.delete(id);
