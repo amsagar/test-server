@@ -13,6 +13,8 @@ import dev.danvega.codingagent.chat.tooling.SearchToolsCallback;
 import dev.danvega.codingagent.chat.repo.ChatToolEventRepository;
 import dev.danvega.codingagent.chat.tooling.ToolEventRegistry;
 import dev.danvega.codingagent.chat.tooling.ToolEventSink;
+import dev.danvega.codingagent.document.dto.response.DocumentDto;
+import dev.danvega.codingagent.document.service.DocumentService;
 import dev.danvega.codingagent.skill.runtime.SkillWorkspaceService;
 import dev.danvega.codingagent.tool.runtime.HttpToolCallbackFactory;
 import org.slf4j.Logger;
@@ -21,12 +23,15 @@ import org.springaicommunity.agent.tools.FileSystemTools;
 import org.springaicommunity.agent.tools.ShellTools;
 import org.springaicommunity.agent.tools.SkillsTool;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
@@ -73,8 +78,10 @@ public class ChatController {
             If the user asks about anything outside that scope — general knowledge, current events, \
             politics, people, trivia, or any unrelated topic — do NOT answer it, even if you know the \
             answer. Instead, briefly (one sentence) decline and remind the user what you can help with. \
-            Tool results and the conversation so far are in scope; your own world knowledge about \
-            unrelated subjects is not.""";
+            Tool results, the conversation so far, and any retrieved reference-document context provided \
+            to you are all in scope — when that context answers the user's question, use it and answer \
+            normally, even if the topic is not mentioned in your role above. Only your own world \
+            knowledge about unrelated subjects is out of scope.""";
 
     private final ChatClient chatClient;
     private final ChatSessionService chatSessionService;
@@ -89,6 +96,20 @@ public class ChatController {
     private final SkillWorkspaceService skillWorkspaceService;
     private final ScopeGuardService scopeGuardService;
     private final ChatMemory chatMemory;
+    private final DocumentService documentService;
+    private final VectorStore vectorStore;
+    private final QuestionAnswerAdvisor ragAdvisor;
+
+    /** Similarity threshold the RAG advisor uses to decide which chunks to inject into the prompt. */
+    private static final double RAG_SIMILARITY_THRESHOLD = 0.5;
+
+    /**
+     * Lower "plausibly relevant" bar used only by the scope-guard pre-check. Kept below
+     * {@link #RAG_SIMILARITY_THRESHOLD} so a borderline-but-on-topic question reliably passes the
+     * guard (instead of flapping around the injection threshold); the RAG advisor then independently
+     * decides, at the stricter threshold, whether to actually augment the prompt.
+     */
+    private static final double RAG_SCOPE_RELEVANCE_THRESHOLD = 0.4;
 
     @Value("${agent.tool-search.threshold:15}")
     private int toolSearchThreshold;
@@ -105,7 +126,9 @@ public class ChatController {
                           InvokeToolCallback invokeToolCallback,
                           SkillWorkspaceService skillWorkspaceService,
                           ScopeGuardService scopeGuardService,
-                          ChatMemory chatMemory) {
+                          ChatMemory chatMemory,
+                          DocumentService documentService,
+                          VectorStore vectorStore) {
         this.chatClient = chatClient;
         this.chatSessionService = chatSessionService;
         this.assistantService = assistantService;
@@ -119,6 +142,14 @@ public class ChatController {
         this.skillWorkspaceService = skillWorkspaceService;
         this.scopeGuardService = scopeGuardService;
         this.chatMemory = chatMemory;
+        this.documentService = documentService;
+        this.vectorStore = vectorStore;
+        // RAG advisor: retrieves the most relevant chunks from the pgvector store BEFORE the model
+        // call and augments the prompt. The default search request is overridden per request with a
+        // FILTER_EXPRESSION that scopes retrieval to the selected assistant's documents.
+        this.ragAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
+                .searchRequest(SearchRequest.builder().topK(4).similarityThreshold(RAG_SIMILARITY_THRESHOLD).build())
+                .build();
     }
 
     public record Chunk(String text) {}
@@ -147,13 +178,22 @@ public class ChatController {
         // Scope guard (hard pre-check): when the assistant has a defined role, classify the message
         // before reaching the main model. Out-of-scope messages are short-circuited with a redirect —
         // no model call, no tools. Disabled / no-role => allowed; classifier errors fail open.
-        if (!systemPrompt.isBlank()) {
+        // Exception: if the assistant's attached RAG documents actually contain content relevant to
+        // the message (a vector-similarity hit at the same threshold the RAG advisor uses), the
+        // documents have widened the assistant's scope — allow it through without the classifier.
+        if (!systemPrompt.isBlank() && !answerableFromDocuments(assistantId, message)) {
             List<String> toolSummaries = toolCallbacks.stream()
                     .map(cb -> cb.getToolDefinition().name() + " — " + cb.getToolDefinition().description())
                     .toList();
             List<Message> recentHistory = chatMemory.get(sessionId);
+            // Document names also go to the classifier so a descriptively-named doc can pass even when
+            // the retrieval hit is borderline (the deterministic check above is the primary path).
+            List<String> documentNames = documentService.list(assistantId).stream()
+                    .filter(DocumentDto::isEnabled)
+                    .map(DocumentDto::getName)
+                    .toList();
             ScopeGuardService.Decision decision =
-                    scopeGuardService.check(systemPrompt, toolSummaries, recentHistory, message);
+                    scopeGuardService.check(systemPrompt, toolSummaries, documentNames, recentHistory, message);
             if (!decision.allowed()) {
                 String redirect = decision.redirect();
                 // Persist the turn so a reload shows it (the memory advisor only auto-saves on a real
@@ -261,11 +301,25 @@ public class ChatController {
             request = request.system(effectiveSystemPrompt);
         }
 
+        // RAG: when the selected assistant has uploaded documents, attach the QuestionAnswerAdvisor
+        // and scope retrieval to this assistant via a metadata filter. Retrieval runs synchronously
+        // before the model call (during the advisor chain), so the streaming path below is unchanged
+        // — only the first token is preceded by one vector-search round-trip.
+        if (assistantId != null && documentService.enabledCount(assistantId) > 0) {
+            request = request
+                    .advisors(ragAdvisor)
+                    .advisors(a -> a.param(QuestionAnswerAdvisor.FILTER_EXPRESSION,
+                            "assistant_id == '" + assistantId + "'"));
+        }
+
         Flux<ServerSentEvent<Object>> tokens = request
                 .stream()
                 .content()
                 .map(text -> sse("message", new Chunk(text)))
-                .onErrorResume(e -> Flux.just(sse("error", new Chunk(e.getMessage()))))
+                .onErrorResume(e -> {
+                    log.error("Chat stream failed for session {} assistant {}", sessionId, assistantId, e);
+                    return Flux.just(sse("error", new Chunk(e.getMessage())));
+                })
                 .doOnComplete(toolSink::tryEmitComplete)
                 .doOnError(e -> toolSink.tryEmitComplete());
 
@@ -279,6 +333,31 @@ public class ChatController {
                     dynamicToolRegistry.unregister(requestId);
                     skillWorkspaceService.cleanup(skillWorkspace);
                 });
+    }
+
+    /**
+     * True when the assistant has enabled documents that actually contain content relevant to the
+     * message. Runs the same scoped, thresholded vector search the RAG advisor will perform, so a hit
+     * here guarantees the advisor would inject context — meaning the documents have widened scope and
+     * the message should bypass the scope-guard classifier. Fails closed (returns false) on any error
+     * so a vector-store hiccup never turns the guard off entirely.
+     */
+    private boolean answerableFromDocuments(String assistantId, String message) {
+        if (assistantId == null || message == null || message.isBlank()
+                || documentService.enabledCount(assistantId) == 0) {
+            return false;
+        }
+        try {
+            return !vectorStore.similaritySearch(SearchRequest.builder()
+                    .query(message)
+                    .topK(1)
+                    .similarityThreshold(RAG_SCOPE_RELEVANCE_THRESHOLD)
+                    .filterExpression("assistant_id == '" + assistantId + "'")
+                    .build()).isEmpty();
+        } catch (RuntimeException e) {
+            log.warn("RAG relevance pre-check failed for assistant {}: {}", assistantId, e.getMessage());
+            return false;
+        }
     }
 
     private static ServerSentEvent<Object> sse(String event, Object data) {

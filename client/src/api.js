@@ -144,6 +144,30 @@ export const api = {
   },
 
   deleteSkill: (id) => fetch(`/api/skills/${id}`, { method: "DELETE" }).then(ok),
+
+  // --- RAG documents ---
+  listDocuments: (assistantId) =>
+    fetch(`/api/documents?assistantId=${encodeURIComponent(assistantId)}`).then(json),
+
+  uploadDocument: (assistantId, file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    // No Content-Type header: the browser sets the multipart boundary itself.
+    return fetch(`/api/documents?assistantId=${encodeURIComponent(assistantId)}`, {
+      method: "POST",
+      body: fd,
+    }).then(json);
+  },
+
+  updateDocument: (id, body) =>
+    fetch(`/api/documents/${id}`, {
+      method: "PATCH",
+      headers: jsonHeaders,
+      body: JSON.stringify(body),
+    }).then(json),
+
+  deleteDocument: (id) =>
+    fetch(`/api/documents/${id}`, { method: "DELETE" }).then(ok),
 };
 
 export function relativeTime(epochSeconds) {

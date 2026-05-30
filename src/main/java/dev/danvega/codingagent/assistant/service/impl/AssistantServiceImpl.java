@@ -9,6 +9,10 @@ import dev.danvega.codingagent.assistant.entity.Assistant;
 import dev.danvega.codingagent.assistant.repo.AssistantRepository;
 import dev.danvega.codingagent.assistant.service.AssistantService;
 import dev.danvega.codingagent.chat.tooling.BuiltinToolCatalog;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -18,13 +22,21 @@ import java.util.List;
 @Service
 public class AssistantServiceImpl implements AssistantService {
 
+    private static final Logger log = LoggerFactory.getLogger(AssistantServiceImpl.class);
+
     private final AssistantRepository repository;
     private final BuiltinToolCatalog builtinToolCatalog;
+    // RAG chunks live in the Spring-managed vector_store (no FK to assistant), so they are not
+    // removed by the ON DELETE CASCADE that clears agent_document rows. Purge them explicitly.
+    // Injected lazily via ObjectProvider to avoid a hard dependency at startup.
+    private final ObjectProvider<VectorStore> vectorStoreProvider;
 
     public AssistantServiceImpl(AssistantRepository repository,
-                                BuiltinToolCatalog builtinToolCatalog) {
+                                BuiltinToolCatalog builtinToolCatalog,
+                                ObjectProvider<VectorStore> vectorStoreProvider) {
         this.repository = repository;
         this.builtinToolCatalog = builtinToolCatalog;
+        this.vectorStoreProvider = vectorStoreProvider;
     }
 
     @Override
@@ -63,6 +75,16 @@ public class AssistantServiceImpl implements AssistantService {
     @Override
     public void delete(String id) {
         requireEntity(id);
+        // Purge this assistant's RAG chunks before the row goes (cascade clears agent_document rows
+        // but not the vector_store chunks, which are keyed by metadata rather than an FK).
+        VectorStore vectorStore = vectorStoreProvider.getIfAvailable();
+        if (vectorStore != null) {
+            try {
+                vectorStore.delete("assistant_id == '" + id + "'");
+            } catch (RuntimeException e) {
+                log.warn("Failed to purge RAG chunks for assistant {}: {}", id, e.getMessage());
+            }
+        }
         repository.delete(id);
     }
 

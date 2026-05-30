@@ -24,11 +24,13 @@ public interface ScopeGuardService {
     /**
      * @param assistantRole  the assistant's system prompt (its defined role/scope)
      * @param toolSummaries  one entry per available tool ("name — description"); may be empty
+     * @param documentNames  names of the assistant's enabled RAG documents; questions answerable from
+     *                       these are treated as in-scope. May be empty.
      * @param recentHistory  a short tail of prior conversation for follow-up context; may be empty
      * @param userMessage    the user's latest message
      * @return a {@link Decision}; always {@code allowed} when the guard is disabled or the role is blank,
      *         and fails open (allowed) if the classifier call errors.
      */
-    Decision check(String assistantRole, List<String> toolSummaries,
+    Decision check(String assistantRole, List<String> toolSummaries, List<String> documentNames,
                    List<Message> recentHistory, String userMessage);
 }

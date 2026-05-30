@@ -19,6 +19,7 @@ spring:
         - classpath:sql-models/agent-tool-model.sql
         - classpath:sql-models/tool-embedding-model.sql
         - classpath:sql-models/agent-skill-model.sql
+        - classpath:sql-models/agent-document-model.sql
         - classpath:sql-models/chat-tool-event-model.sql
   ai:
     azure:
@@ -36,11 +37,21 @@ spring:
         repository:
           jdbc:
             initialize-schema: always
+    vectorstore:
+      pgvector:
+        # Spring AI manages the vector_store table that holds per-assistant RAG chunks.
+        initialize-schema: true
+        # text-embedding-3-large yields 3072-dim vectors; pgvector's hnsw/ivfflat ANN indexes
+        # cap at 2000 dims, so we run with no vector index (sequential scan + metadata filter).
+        index-type: NONE
+        dimensions: 3072
+        distance-type: COSINE_DISTANCE
 azure:
   storage:
     blob:
       connection-string: "DefaultEndpointsProtocol=https;AccountName=openfga;AccountKey=3qRPjRUAleZDRiDuHaZxCcrPFLAABAeLK/lSIuIDPTTo1CBgnzFIg+TvPvynr1sL5EtL7aIofTix+AStN2labg==;EndpointSuffix=core.windows.net"
       skills-container: agent-skills
+      documents-container: agent-documents
 
 agent:
   # When true, each user message is first classified against the selected assistant's role; off-topic

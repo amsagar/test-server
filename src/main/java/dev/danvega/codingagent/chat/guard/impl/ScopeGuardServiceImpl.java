@@ -32,14 +32,14 @@ public class ScopeGuardServiceImpl implements ScopeGuardService {
     }
 
     @Override
-    public Decision check(String assistantRole, List<String> toolSummaries,
+    public Decision check(String assistantRole, List<String> toolSummaries, List<String> documentNames,
                           List<Message> recentHistory, String userMessage) {
         if (!enabled || assistantRole == null || assistantRole.isBlank()
                 || userMessage == null || userMessage.isBlank()) {
             return Decision.allow();
         }
         try {
-            String prompt = buildPrompt(assistantRole, toolSummaries, recentHistory, userMessage);
+            String prompt = buildPrompt(assistantRole, toolSummaries, documentNames, recentHistory, userMessage);
             String raw = scopeGuardChatClient.prompt().user(prompt).call().content();
             return parse(raw);
         } catch (Exception e) {
@@ -68,7 +68,7 @@ public class ScopeGuardServiceImpl implements ScopeGuardService {
         return Decision.block(redirect);
     }
 
-    private String buildPrompt(String assistantRole, List<String> toolSummaries,
+    private String buildPrompt(String assistantRole, List<String> toolSummaries, List<String> documentNames,
                                List<Message> recentHistory, String userMessage) {
         StringBuilder sb = new StringBuilder();
         sb.append("ROLE:\n").append(assistantRole.strip()).append("\n\n");
@@ -79,6 +79,16 @@ public class ScopeGuardServiceImpl implements ScopeGuardService {
         } else {
             for (String t : toolSummaries) {
                 sb.append("- ").append(t).append('\n');
+            }
+        }
+        sb.append('\n');
+
+        sb.append("DOCUMENTS:\n");
+        if (documentNames == null || documentNames.isEmpty()) {
+            sb.append("(none)\n");
+        } else {
+            for (String d : documentNames) {
+                sb.append("- ").append(d).append('\n');
             }
         }
         sb.append('\n');

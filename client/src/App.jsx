@@ -6,6 +6,7 @@ import AssistantsPanel from "./components/AssistantsPanel";
 import ToolsPanel from "./components/ToolsPanel";
 import AuthProfilesPanel from "./components/AuthProfilesPanel";
 import SkillsPanel from "./components/SkillsPanel";
+import DocumentsPanel from "./components/DocumentsPanel";
 
 export default function App() {
   const [sessions, setSessions] = useState([]);
@@ -24,6 +25,7 @@ export default function App() {
   const [showTools, setShowTools] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [showSkills, setShowSkills] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
   const esRef = useRef(null);
   const scrollRef = useRef(null);
 
@@ -275,6 +277,13 @@ export default function App() {
           >
             🧠
           </button>
+          <button
+            className="icon-btn"
+            title="Manage RAG documents"
+            onClick={() => setShowDocuments(true)}
+          >
+            📄
+          </button>
         </div>
 
         <div className="toggle">
@@ -489,6 +498,12 @@ export default function App() {
       {showSkills && (
         <Modal title="Agent skills" wide onClose={() => setShowSkills(false)}>
           <SkillsPanel />
+        </Modal>
+      )}
+
+      {showDocuments && (
+        <Modal title="RAG documents" wide onClose={() => setShowDocuments(false)}>
+          <DocumentsPanel />
         </Modal>
       )}
     </div>
