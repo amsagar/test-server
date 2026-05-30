@@ -13,6 +13,7 @@ spring:
         - classpath:sql-models/chat-session-model.sql
         - classpath:sql-models/assistant-model.sql
         - classpath:sql-models/agent-tool-model.sql
+        - classpath:sql-models/tool-embedding-model.sql
         - classpath:sql-models/chat-tool-event-model.sql
   ai:
     azure:
@@ -22,6 +23,9 @@ spring:
         chat:
           options:
             deployment-name: gpt-5.2-chat
+        embedding:
+          options:
+            deployment-name: text-embedding-3-large
     chat:
       memory:
         repository:

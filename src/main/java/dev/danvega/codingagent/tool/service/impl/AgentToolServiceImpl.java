@@ -10,6 +10,7 @@ import dev.danvega.codingagent.tool.entity.AgentTool;
 import dev.danvega.codingagent.tool.repo.AgentToolRepository;
 import dev.danvega.codingagent.tool.runtime.HttpToolExecutor;
 import dev.danvega.codingagent.tool.service.AgentToolService;
+import dev.danvega.codingagent.tool.service.ToolEmbeddingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -22,10 +23,13 @@ public class AgentToolServiceImpl implements AgentToolService {
 
     private final AgentToolRepository repository;
     private final HttpToolExecutor executor;
+    private final ToolEmbeddingService embeddingService;
 
-    public AgentToolServiceImpl(AgentToolRepository repository, HttpToolExecutor executor) {
+    public AgentToolServiceImpl(AgentToolRepository repository, HttpToolExecutor executor,
+                                ToolEmbeddingService embeddingService) {
         this.repository = repository;
         this.executor = executor;
+        this.embeddingService = embeddingService;
     }
 
     @Override
@@ -55,6 +59,7 @@ public class AgentToolServiceImpl implements AgentToolService {
         tool.setEnabled(request.getEnabled() == null || request.getEnabled());
         String id = repository.create(tool, now);
         log.info("Created HTTP tool {} ({})", id, tool.getName());
+        embeddingService.embedToolAsync(id);
         return get(id);
     }
 
@@ -93,6 +98,7 @@ public class AgentToolServiceImpl implements AgentToolService {
             existing.setEnabled(request.getEnabled());
         }
         repository.update(existing, now);
+        embeddingService.embedToolAsync(id);
         return get(id);
     }
 
@@ -136,6 +142,7 @@ public class AgentToolServiceImpl implements AgentToolService {
         }
         tool.setEnabled(true);
         String id = repository.create(tool, now);
+        embeddingService.embedToolAsync(id);
         return get(id);
     }
 

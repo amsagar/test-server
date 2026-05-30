@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.PreparedStatement;
 import java.sql.Types;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -70,6 +71,40 @@ public class AgentToolRepository {
     public int delete(String id) {
         return jdbcTemplate.update(sqlQueryLoader.getQuery("TOOL.DELETE"), id);
     }
+
+    /** Current stored hash of the name+description used to build the embedding, or null. */
+    public String findEmbeddingHash(String id) {
+        return jdbcTemplate.query(sqlQueryLoader.getQuery("TOOL.FIND_EMBEDDING_HASH"),
+                        rs -> rs.next() ? rs.getString(1) : null, id);
+    }
+
+    /** Stores the pgvector embedding literal (e.g. "[0.1,0.2,...]") plus its source hash. */
+    public int updateEmbedding(String id, String vectorLiteral, String hash) {
+        return jdbcTemplate.update(sqlQueryLoader.getQuery("TOOL.UPDATE_EMBEDDING"),
+                vectorLiteral, hash, id);
+    }
+
+    /** Tools that have no embedding yet (id, name, description), for startup backfill. */
+    public List<EmbeddingCandidate> findMissingEmbedding() {
+        return jdbcTemplate.query(sqlQueryLoader.getQuery("TOOL.FIND_MISSING_EMBEDDING"),
+                (rs, rowNum) -> new EmbeddingCandidate(
+                        rs.getString("id"), rs.getString("name"), rs.getString("description")));
+    }
+
+    /**
+     * Cosine similarity (1 - distance) of each of an assistant's enabled, embedded tools against
+     * the supplied query vector, keyed by the raw {@code agent_tool.name}. Computed DB-side via
+     * pgvector's {@code <=>} operator.
+     */
+    public Map<String, Double> similarityScores(String assistantId, String vectorLiteral) {
+        Map<String, Double> scores = new java.util.HashMap<>();
+        jdbcTemplate.query(sqlQueryLoader.getQuery("TOOL.SIMILARITY_BY_ASSISTANT"),
+                rs -> { scores.put(rs.getString("name"), rs.getDouble("score")); },
+                vectorLiteral, assistantId);
+        return scores;
+    }
+
+    public record EmbeddingCandidate(String id, String name, String description) {}
 
     private static void setNullableString(PreparedStatement ps, int index, String value) throws java.sql.SQLException {
         if (value == null || value.isBlank()) {

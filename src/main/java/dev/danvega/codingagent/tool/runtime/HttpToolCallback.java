@@ -26,7 +26,7 @@ public class HttpToolCallback implements ToolCallback {
     @Override
     public ToolDefinition getToolDefinition() {
         return DefaultToolDefinition.builder()
-                .name(sanitizeName(tool.getName()))
+                .name(ToolNames.sanitize(tool.getName()))
                 .description(tool.getDescription() == null ? "" : tool.getDescription())
                 .inputSchema(resolveSchema())
                 .build();
@@ -45,13 +45,5 @@ public class HttpToolCallback implements ToolCallback {
     private String resolveSchema() {
         String raw = tool.getRequestSchema();
         return raw == null || raw.isBlank() ? EMPTY_SCHEMA : raw;
-    }
-
-    private static String sanitizeName(String name) {
-        if (name == null || name.isBlank()) {
-            return "tool";
-        }
-        String cleaned = name.trim().replaceAll("[^a-zA-Z0-9_-]", "_");
-        return cleaned.length() > 64 ? cleaned.substring(0, 64) : cleaned;
     }
 }

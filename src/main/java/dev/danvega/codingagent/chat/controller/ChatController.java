@@ -5,7 +5,10 @@ import dev.danvega.codingagent.assistant.entity.Assistant;
 import dev.danvega.codingagent.assistant.service.AssistantService;
 import dev.danvega.codingagent.chat.service.ChatSessionService;
 import dev.danvega.codingagent.chat.tooling.BuiltinToolCatalog;
+import dev.danvega.codingagent.chat.tooling.DynamicToolRegistry;
 import dev.danvega.codingagent.chat.tooling.EventEmittingToolCallback;
+import dev.danvega.codingagent.chat.tooling.InvokeToolCallback;
+import dev.danvega.codingagent.chat.tooling.SearchToolsCallback;
 import dev.danvega.codingagent.chat.repo.ChatToolEventRepository;
 import dev.danvega.codingagent.chat.tooling.ToolEventRegistry;
 import dev.danvega.codingagent.chat.tooling.ToolEventSink;
@@ -15,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -28,6 +32,7 @@ import reactor.core.publisher.Sinks;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,6 +48,13 @@ public class ChatController {
 
     private static final int MAX_OUTPUT_CHARS = 6000;
 
+    private static final String TOOL_SEARCH_HINT = """
+            You have access to many tools, but they are not all listed directly. To use a tool, first \
+            call `search_tools` with a natural-language query describing what you need; it returns the \
+            matching tools with their exact names and input schemas. Then call `invoke_tool` with the \
+            chosen tool's exact `name` and an `input` object matching that tool's schema. Search again \
+            with a different query if the first results are not relevant.""";
+
     private final ChatClient chatClient;
     private final ChatSessionService chatSessionService;
     private final AssistantService assistantService;
@@ -50,6 +62,12 @@ public class ChatController {
     private final HttpToolCallbackFactory httpToolCallbackFactory;
     private final ToolEventRegistry toolEventRegistry;
     private final ChatToolEventRepository toolEventRepository;
+    private final DynamicToolRegistry dynamicToolRegistry;
+    private final SearchToolsCallback searchToolsCallback;
+    private final InvokeToolCallback invokeToolCallback;
+
+    @Value("${agent.tool-search.threshold:15}")
+    private int toolSearchThreshold;
 
     public ChatController(ChatClient chatClient,
                           ChatSessionService chatSessionService,
@@ -57,7 +75,10 @@ public class ChatController {
                           BuiltinToolCatalog builtinToolCatalog,
                           HttpToolCallbackFactory httpToolCallbackFactory,
                           ToolEventRegistry toolEventRegistry,
-                          ChatToolEventRepository toolEventRepository) {
+                          ChatToolEventRepository toolEventRepository,
+                          DynamicToolRegistry dynamicToolRegistry,
+                          SearchToolsCallback searchToolsCallback,
+                          InvokeToolCallback invokeToolCallback) {
         this.chatClient = chatClient;
         this.chatSessionService = chatSessionService;
         this.assistantService = assistantService;
@@ -65,6 +86,9 @@ public class ChatController {
         this.httpToolCallbackFactory = httpToolCallbackFactory;
         this.toolEventRegistry = toolEventRegistry;
         this.toolEventRepository = toolEventRepository;
+        this.dynamicToolRegistry = dynamicToolRegistry;
+        this.searchToolsCallback = searchToolsCallback;
+        this.invokeToolCallback = invokeToolCallback;
     }
 
     public record Chunk(String text) {}
@@ -124,16 +148,37 @@ public class ChatController {
             }
         });
 
-        List<ToolCallback> instrumented = toolCallbacks.stream()
-                .map(cb -> (ToolCallback) new EventEmittingToolCallback(cb, toolEventRegistry))
-                .toList();
+        // When an assistant has more tools than the threshold, don't send them all to the model
+        // (token bloat + worse tool selection). Instead expose only search_tools + invoke_tool and
+        // let the model discover/dispatch the real tools on demand. The real (instrumented) tools
+        // are stashed in the DynamicToolRegistry so invoke_tool can route to them by name, keeping
+        // the existing event/UI/persistence behavior for the underlying tool calls.
+        boolean searchMode = toolCallbacks.size() > toolSearchThreshold;
+        List<ToolCallback> toolsToSend;
+        String effectiveSystemPrompt = systemPrompt;
+        if (searchMode) {
+            Map<String, ToolCallback> catalog = new LinkedHashMap<>();
+            for (ToolCallback cb : toolCallbacks) {
+                catalog.put(cb.getToolDefinition().name(),
+                        new EventEmittingToolCallback(cb, toolEventRegistry));
+            }
+            dynamicToolRegistry.register(requestId, assistantId, catalog);
+            toolsToSend = List.of(
+                    new EventEmittingToolCallback(searchToolsCallback, toolEventRegistry),
+                    invokeToolCallback);
+            effectiveSystemPrompt = (systemPrompt.isBlank() ? "" : systemPrompt + "\n\n") + TOOL_SEARCH_HINT;
+        } else {
+            toolsToSend = toolCallbacks.stream()
+                    .map(cb -> (ToolCallback) new EventEmittingToolCallback(cb, toolEventRegistry))
+                    .toList();
+        }
 
         ChatClient.ChatClientRequestSpec request = chatClient.prompt(message)
                 .toolContext(Map.of(ToolEventRegistry.REQUEST_ID, requestId))
-                .toolCallbacks(instrumented)
+                .toolCallbacks(toolsToSend)
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, sessionId));
-        if (!systemPrompt.isBlank()) {
-            request = request.system(systemPrompt);
+        if (!effectiveSystemPrompt.isBlank()) {
+            request = request.system(effectiveSystemPrompt);
         }
 
         Flux<ServerSentEvent<Object>> tokens = request
@@ -149,7 +194,10 @@ public class ChatController {
 
         return Flux.merge(toolSink.asFlux(), tokens)
                 .concatWith(done)
-                .doFinally(signal -> toolEventRegistry.unregister(requestId));
+                .doFinally(signal -> {
+                    toolEventRegistry.unregister(requestId);
+                    dynamicToolRegistry.unregister(requestId);
+                });
     }
 
     private static ServerSentEvent<Object> sse(String event, Object data) {
