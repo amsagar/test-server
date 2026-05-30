@@ -41,7 +41,10 @@ public class ToolImportServiceImpl implements ToolImportService {
     }
 
     @Override
-    public ImportResult importByKind(String kind, ImportRequest request) {
+    public ImportResult importByKind(String kind, String assistantId, ImportRequest request) {
+        if (assistantId == null || assistantId.isBlank()) {
+            throw new IllegalArgumentException("assistantId is required to import tools");
+        }
         String content = request == null ? null : request.getContent();
         if (content == null || content.isBlank()) {
             throw new IllegalArgumentException("Import content is required");
@@ -58,7 +61,7 @@ public class ToolImportServiceImpl implements ToolImportService {
             if (host != null && !host.isBlank() && (tool.getHost() == null || tool.getHost().isBlank())) {
                 tool.setHost(host.trim());
             }
-            saved.add(toolService.persistImported(tool));
+            saved.add(toolService.persistImported(assistantId, tool));
         }
         log.info("Imported {} tool(s) via {}", saved.size(), kind);
         return new ImportResult(saved.size(), saved);

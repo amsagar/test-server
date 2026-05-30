@@ -30,26 +30,23 @@ public class AgentToolRepository {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, new String[] { "id" });
-            ps.setString(1, t.getName());
-            ps.setString(2, t.getDescription());
-            ps.setString(3, t.getMethod());
-            ps.setString(4, t.getHost());
-            ps.setString(5, t.getEndpoint());
-            ps.setString(6, t.getRequestSchema());
-            ps.setString(7, t.getSourceType());
-            setNullableString(ps, 8, t.getAuthProfileId());
-            ps.setString(9, t.getAuthType());
-            ps.setString(10, t.getAuthConfig());
-            ps.setBoolean(11, t.isEnabled());
-            ps.setLong(12, now);
+            ps.setString(1, t.getAssistantId());
+            ps.setString(2, t.getName());
+            ps.setString(3, t.getDescription());
+            ps.setString(4, t.getMethod());
+            ps.setString(5, t.getHost());
+            ps.setString(6, t.getEndpoint());
+            ps.setString(7, t.getRequestSchema());
+            ps.setString(8, t.getSourceType());
+            setNullableString(ps, 9, t.getAuthProfileId());
+            ps.setString(10, t.getAuthType());
+            ps.setString(11, t.getAuthConfig());
+            ps.setBoolean(12, t.isEnabled());
             ps.setLong(13, now);
+            ps.setLong(14, now);
             return ps;
         }, keyHolder);
         return String.valueOf(keyHolder.getKeys().get("id"));
-    }
-
-    public List<AgentTool> findAll() {
-        return jdbcTemplate.query(sqlQueryLoader.getQuery("TOOL.FIND_ALL"), rowMapper());
     }
 
     public Optional<AgentTool> findById(String id) {
@@ -57,8 +54,14 @@ public class AgentToolRepository {
                 .stream().findFirst();
     }
 
+    /** All of an assistant's tools (enabled and disabled), for management UI. */
     public List<AgentTool> findByAssistant(String assistantId) {
         return jdbcTemplate.query(sqlQueryLoader.getQuery("TOOL.FIND_BY_ASSISTANT"), rowMapper(), assistantId);
+    }
+
+    /** Only an assistant's enabled tools, for runtime callback assembly. */
+    public List<AgentTool> findEnabledByAssistant(String assistantId) {
+        return jdbcTemplate.query(sqlQueryLoader.getQuery("TOOL.FIND_ENABLED_BY_ASSISTANT"), rowMapper(), assistantId);
     }
 
     public int update(AgentTool t, long now) {
@@ -117,6 +120,7 @@ public class AgentToolRepository {
     private RowMapper<AgentTool> rowMapper() {
         return (rs, rowNum) -> new AgentTool(
                 rs.getString("id"),
+                rs.getString("assistant_id"),
                 rs.getString("name"),
                 rs.getString("description"),
                 rs.getString("method"),

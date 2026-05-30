@@ -11,11 +11,11 @@ import java.util.List;
 
 public interface AgentToolService {
 
-    List<AgentToolDto> list();
+    List<AgentToolDto> list(String assistantId);
 
     AgentToolDto get(String id);
 
-    AgentToolDto create(CreateToolRequest request);
+    AgentToolDto create(String assistantId, CreateToolRequest request);
 
     AgentToolDto update(String id, UpdateToolRequest request);
 
@@ -25,7 +25,5 @@ public interface AgentToolService {
 
     AgentTool requireEntity(String id);
 
-    List<AgentTool> forAssistant(String assistantId);
-
-    AgentToolDto persistImported(AgentTool tool);
+    AgentToolDto persistImported(String assistantId, AgentTool tool);
 }

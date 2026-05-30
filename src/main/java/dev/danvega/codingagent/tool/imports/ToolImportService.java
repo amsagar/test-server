@@ -5,5 +5,5 @@ import dev.danvega.codingagent.tool.imports.dto.ImportResult;
 
 public interface ToolImportService {
 
-    ImportResult importByKind(String kind, ImportRequest request);
+    ImportResult importByKind(String kind, String assistantId, ImportRequest request);
 }

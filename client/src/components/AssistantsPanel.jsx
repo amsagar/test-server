@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
-const EMPTY = { name: "", systemPrompt: "", builtinTools: [], toolIds: [] };
+const EMPTY = { name: "", systemPrompt: "", builtinTools: [] };
 
 export default function AssistantsPanel({ onChanged }) {
   const [assistants, setAssistants] = useState([]);
   const [builtins, setBuiltins] = useState([]);
-  const [httpTools, setHttpTools] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState("");
@@ -14,7 +13,6 @@ export default function AssistantsPanel({ onChanged }) {
   useEffect(() => {
     load();
     api.builtinTools().then(setBuiltins).catch(() => setBuiltins([]));
-    api.listTools().then(setHttpTools).catch(() => setHttpTools([]));
   }, []);
 
   async function load() {
@@ -37,7 +35,6 @@ export default function AssistantsPanel({ onChanged }) {
       name: a.name,
       systemPrompt: a.systemPrompt,
       builtinTools: a.builtinTools || [],
-      toolIds: a.toolIds || [],
     });
     setError("");
   }
@@ -57,15 +54,6 @@ export default function AssistantsPanel({ onChanged }) {
     }));
   }
 
-  function toggleHttpTool(id) {
-    setForm((f) => ({
-      ...f,
-      toolIds: f.toolIds.includes(id)
-        ? f.toolIds.filter((t) => t !== id)
-        : [...f.toolIds, id],
-    }));
-  }
-
   async function save() {
     if (!form.name.trim() || !form.systemPrompt.trim()) {
       setError("Name and system prompt are required.");
@@ -75,7 +63,6 @@ export default function AssistantsPanel({ onChanged }) {
       name: form.name.trim(),
       systemPrompt: form.systemPrompt,
       builtinTools: form.builtinTools,
-      toolIds: form.toolIds,
     };
     try {
       if (editingId === "new") {
@@ -172,25 +159,9 @@ export default function AssistantsPanel({ onChanged }) {
               ))}
             </div>
 
-            <label className="field-label">HTTP tools</label>
-            {httpTools.length === 0 ? (
-              <div className="muted small">
-                No HTTP tools yet — add them from the Tools manager.
-              </div>
-            ) : (
-              <div className="tool-checks">
-                {httpTools.map((t) => (
-                  <label key={t.id} className="tool-check">
-                    <input
-                      type="checkbox"
-                      checked={form.toolIds.includes(t.id)}
-                      onChange={() => toggleHttpTool(t.id)}
-                    />
-                    {t.name}
-                  </label>
-                ))}
-              </div>
-            )}
+            <div className="muted small">
+              HTTP tools are managed per-assistant in the Tools panel (🔧).
+            </div>
 
             {error && <div className="form-error">{error}</div>}
 

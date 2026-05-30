@@ -11,5 +11,4 @@ public class UpdateAssistantRequest {
     private String name;
     private String systemPrompt;
     private List<String> builtinTools;
-    private List<String> toolIds;
 }

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -37,8 +38,8 @@ public class ToolController {
     }
 
     @GetMapping
-    public ResponseEntity<List<AgentToolDto>> list() {
-        return ResponseEntity.ok(toolService.list());
+    public ResponseEntity<List<AgentToolDto>> list(@RequestParam String assistantId) {
+        return ResponseEntity.ok(toolService.list(assistantId));
     }
 
     @GetMapping("/{id}")
@@ -47,8 +48,9 @@ public class ToolController {
     }
 
     @PostMapping
-    public ResponseEntity<AgentToolDto> create(@RequestBody CreateToolRequest request) {
-        return ResponseEntity.ok(toolService.create(request));
+    public ResponseEntity<AgentToolDto> create(@RequestParam String assistantId,
+                                               @RequestBody CreateToolRequest request) {
+        return ResponseEntity.ok(toolService.create(assistantId, request));
     }
 
     @PatchMapping("/{id}")
@@ -71,7 +73,8 @@ public class ToolController {
 
     @PostMapping("/import/{kind}")
     public ResponseEntity<ImportResult> importTools(@PathVariable String kind,
+                                                    @RequestParam String assistantId,
                                                     @RequestBody ImportRequest request) {
-        return ResponseEntity.ok(importService.importByKind(kind, request));
+        return ResponseEntity.ok(importService.importByKind(kind, assistantId, request));
     }
 }

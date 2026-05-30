@@ -24,7 +24,7 @@ public class HttpToolCallbackFactory {
         if (assistantId == null || assistantId.isBlank()) {
             return List.of();
         }
-        return toolRepository.findByAssistant(assistantId).stream()
+        return toolRepository.findEnabledByAssistant(assistantId).stream()
                 .map(tool -> (ToolCallback) new HttpToolCallback(tool, executor))
                 .toList();
     }

@@ -9,5 +9,4 @@ public class CreateAssistantRequest {
     private String name;
     private String systemPrompt;
     private List<String> builtinTools;
-    private List<String> toolIds;
 }

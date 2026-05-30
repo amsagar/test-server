@@ -26,7 +26,5 @@ public interface AssistantService {
 
     List<String> builtinToolKeys(Assistant assistant);
 
-    List<String> toolIdsFor(String assistantId);
-
     String defaultAssistantId();
 }

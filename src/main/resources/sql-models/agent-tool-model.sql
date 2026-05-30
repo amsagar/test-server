@@ -13,8 +13,14 @@ CREATE TABLE IF NOT EXISTS tool_auth_profile (
     updated_at               BIGINT NOT NULL
 );
 
+-- Tools are owned by exactly one assistant (mirrors agent_skill). Previously they were global and
+-- linked many-to-many via assistant_agent_tool; that join table is dropped below. Existing global
+-- rows can't satisfy the NOT NULL owner, so they're cleared (re-import per assistant afterward).
+DROP TABLE IF EXISTS assistant_agent_tool;
+
 CREATE TABLE IF NOT EXISTS agent_tool (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    assistant_id    UUID NOT NULL REFERENCES assistant (id) ON DELETE CASCADE,
     name            VARCHAR(200) NOT NULL,
     description     TEXT,
     method          VARCHAR(10) NOT NULL DEFAULT 'GET',
@@ -30,8 +36,9 @@ CREATE TABLE IF NOT EXISTS agent_tool (
     updated_at      BIGINT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS assistant_agent_tool (
-    assistant_id UUID NOT NULL REFERENCES assistant (id) ON DELETE CASCADE,
-    tool_id      UUID NOT NULL REFERENCES agent_tool (id) ON DELETE CASCADE,
-    PRIMARY KEY (assistant_id, tool_id)
-);
+-- Migrate an older global agent_tool: clear rows, then add the owner column as NOT NULL (safe on the
+-- now-empty table). On a fresh DB the column already exists from CREATE above and these are no-ops.
+DELETE FROM agent_tool;
+ALTER TABLE agent_tool ADD COLUMN IF NOT EXISTS assistant_id UUID NOT NULL REFERENCES assistant (id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_agent_tool_assistant ON agent_tool (assistant_id);

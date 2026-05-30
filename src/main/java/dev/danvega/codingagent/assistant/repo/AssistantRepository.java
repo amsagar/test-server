@@ -61,19 +61,6 @@ public class AssistantRepository {
         return jdbcTemplate.update(sqlQueryLoader.getQuery("ASSISTANT.DELETE"), id);
     }
 
-    public void clearTools(String assistantId) {
-        jdbcTemplate.update(sqlQueryLoader.getQuery("ASSISTANT.TOOL.CLEAR"), assistantId);
-    }
-
-    public void addTool(String assistantId, String toolId) {
-        jdbcTemplate.update(sqlQueryLoader.getQuery("ASSISTANT.TOOL.ADD"), assistantId, toolId);
-    }
-
-    public List<String> findToolIds(String assistantId) {
-        return jdbcTemplate.query(sqlQueryLoader.getQuery("ASSISTANT.TOOL.FIND_IDS"),
-                (rs, rowNum) -> rs.getString("tool_id"), assistantId);
-    }
-
     private RowMapper<Assistant> rowMapper() {
         return (rs, rowNum) -> new Assistant(
                 rs.getString("id"),

@@ -26,6 +26,8 @@ function parseAuth(authConfig) {
 }
 
 export default function ToolsPanel() {
+  const [assistants, setAssistants] = useState([]);
+  const [assistantId, setAssistantId] = useState("");
   const [tools, setTools] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [editingId, setEditingId] = useState(null);
@@ -40,13 +42,26 @@ export default function ToolsPanel() {
   const [importMsg, setImportMsg] = useState(null);
 
   useEffect(() => {
-    load();
+    api
+      .listAssistants()
+      .then((list) => {
+        setAssistants(list);
+        if (list.length > 0) setAssistantId((cur) => cur || list[0].id);
+      })
+      .catch((e) => setError(e.message));
     api.listAuthProfiles().then(setProfiles).catch(() => setProfiles([]));
   }, []);
 
+  useEffect(() => {
+    if (assistantId) load();
+    else setTools([]);
+    cancel();
+  }, [assistantId]);
+
   async function load() {
+    if (!assistantId) return;
     try {
-      setTools(await api.listTools());
+      setTools(await api.listTools(assistantId));
     } catch (e) {
       setError(e.message);
     }
@@ -120,7 +135,7 @@ export default function ToolsPanel() {
     };
     try {
       if (editingId === "new") {
-        await api.createTool(body);
+        await api.createTool(assistantId, body);
       } else {
         await api.updateTool(editingId, body);
       }
@@ -159,7 +174,7 @@ export default function ToolsPanel() {
       return;
     }
     try {
-      const r = await api.importTools(importKind, {
+      const r = await api.importTools(assistantId, importKind, {
         content: importContent,
         host: importHost.trim() || undefined,
       });
@@ -174,7 +189,25 @@ export default function ToolsPanel() {
   return (
     <div className="assistants-panel">
       <div className="assistants-list">
-        <button className="new-chat" onClick={startNew}>
+        <label className="field-label">Assistant</label>
+        <select
+          value={assistantId}
+          onChange={(e) => setAssistantId(e.target.value)}
+        >
+          {assistants.length === 0 && <option value="">No assistants</option>}
+          {assistants.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+
+        <button
+          className="new-chat"
+          style={{ marginTop: 12 }}
+          onClick={startNew}
+          disabled={!assistantId}
+        >
           + New tool
         </button>
         <button
@@ -184,9 +217,15 @@ export default function ToolsPanel() {
             setError("");
             setImportMsg(null);
           }}
+          disabled={!assistantId}
         >
           ⬇ Import
         </button>
+        {tools.length === 0 && (
+          <div className="muted small" style={{ marginTop: 8 }}>
+            No tools for this assistant yet.
+          </div>
+        )}
         {tools.map((t) => (
           <div
             key={t.id}

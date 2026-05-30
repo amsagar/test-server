@@ -16,7 +16,6 @@ public class AssistantDto {
     private String name;
     private String systemPrompt;
     private List<String> builtinTools;
-    private List<String> toolIds;
     private Long createdAt;
     private Long updatedAt;
 }

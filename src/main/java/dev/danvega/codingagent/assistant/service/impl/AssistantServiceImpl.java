@@ -44,7 +44,6 @@ public class AssistantServiceImpl implements AssistantService {
                 ? "New assistant" : request.getName().trim();
         String prompt = request.getSystemPrompt() == null ? "" : request.getSystemPrompt();
         String id = repository.create(name, prompt, joinBuiltins(request.getBuiltinTools()), now);
-        syncToolIds(id, request.getToolIds());
         return get(id);
     }
 
@@ -58,9 +57,6 @@ public class AssistantServiceImpl implements AssistantService {
         String builtins = request.getBuiltinTools() != null
                 ? joinBuiltins(request.getBuiltinTools()) : existing.getBuiltinTools();
         repository.update(id, name, prompt, builtins, now);
-        if (request.getToolIds() != null) {
-            syncToolIds(id, request.getToolIds());
-        }
         return get(id);
     }
 
@@ -91,23 +87,10 @@ public class AssistantServiceImpl implements AssistantService {
     }
 
     @Override
-    public List<String> toolIdsFor(String assistantId) {
-        return repository.findToolIds(assistantId);
-    }
-
-    @Override
     public String defaultAssistantId() {
         return repository.findAll().stream().findFirst()
                 .map(Assistant::getId)
                 .orElse(null);
-    }
-
-    private void syncToolIds(String assistantId, List<String> toolIds) {
-        repository.clearTools(assistantId);
-        if (toolIds != null) {
-            toolIds.stream().filter(t -> t != null && !t.isBlank())
-                    .forEach(t -> repository.addTool(assistantId, t.trim()));
-        }
     }
 
     private String joinBuiltins(List<String> builtins) {
@@ -123,7 +106,6 @@ public class AssistantServiceImpl implements AssistantService {
                 .name(a.getName())
                 .systemPrompt(a.getSystemPrompt())
                 .builtinTools(builtinToolKeys(a))
-                .toolIds(repository.findToolIds(a.getId()))
                 .createdAt(a.getCreatedAt())
                 .updatedAt(a.getUpdatedAt())
                 .build();

@@ -7,6 +7,7 @@ import lombok.Data;
 @Builder
 public class AgentToolDto {
     private String id;
+    private String assistantId;
     private String name;
     private String description;
     private String method;

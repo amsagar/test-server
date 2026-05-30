@@ -33,8 +33,8 @@ public class AgentToolServiceImpl implements AgentToolService {
     }
 
     @Override
-    public List<AgentToolDto> list() {
-        return repository.findAll().stream().map(this::toDto).toList();
+    public List<AgentToolDto> list(String assistantId) {
+        return repository.findByAssistant(assistantId).stream().map(this::toDto).toList();
     }
 
     @Override
@@ -43,9 +43,10 @@ public class AgentToolServiceImpl implements AgentToolService {
     }
 
     @Override
-    public AgentToolDto create(CreateToolRequest request) {
+    public AgentToolDto create(String assistantId, CreateToolRequest request) {
         long now = Instant.now().getEpochSecond();
         AgentTool tool = new AgentTool();
+        tool.setAssistantId(required(assistantId, "assistantId"));
         tool.setName(required(request.getName(), "name"));
         tool.setDescription(request.getDescription());
         tool.setMethod(normalizeMethod(request.getMethod()));
@@ -127,13 +128,9 @@ public class AgentToolServiceImpl implements AgentToolService {
     }
 
     @Override
-    public List<AgentTool> forAssistant(String assistantId) {
-        return repository.findByAssistant(assistantId);
-    }
-
-    @Override
-    public AgentToolDto persistImported(AgentTool tool) {
+    public AgentToolDto persistImported(String assistantId, AgentTool tool) {
         long now = Instant.now().getEpochSecond();
+        tool.setAssistantId(required(assistantId, "assistantId"));
         if (tool.getMethod() == null || tool.getMethod().isBlank()) {
             tool.setMethod("GET");
         }
@@ -149,6 +146,7 @@ public class AgentToolServiceImpl implements AgentToolService {
     private AgentToolDto toDto(AgentTool t) {
         return AgentToolDto.builder()
                 .id(t.getId())
+                .assistantId(t.getAssistantId())
                 .name(t.getName())
                 .description(t.getDescription())
                 .method(t.getMethod())

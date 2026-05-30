@@ -63,10 +63,11 @@ export const api = {
     fetch(`/api/assistants/${id}`, { method: "DELETE" }).then(ok),
 
   // --- tool registry (Phase 2) ---
-  listTools: () => fetch(`/api/tools`).then(json),
+  listTools: (assistantId) =>
+    fetch(`/api/tools?assistantId=${encodeURIComponent(assistantId)}`).then(json),
 
-  createTool: (body) =>
-    fetch(`/api/tools`, {
+  createTool: (assistantId, body) =>
+    fetch(`/api/tools?assistantId=${encodeURIComponent(assistantId)}`, {
       method: "POST",
       headers: jsonHeaders,
       body: JSON.stringify(body),
@@ -88,8 +89,8 @@ export const api = {
       body: JSON.stringify(body || {}),
     }).then(json),
 
-  importTools: (kind, body) =>
-    fetch(`/api/tools/import/${kind}`, {
+  importTools: (assistantId, kind, body) =>
+    fetch(`/api/tools/import/${kind}?assistantId=${encodeURIComponent(assistantId)}`, {
       method: "POST",
       headers: jsonHeaders,
       body: JSON.stringify(body),
