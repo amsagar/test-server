@@ -3,6 +3,7 @@ package dev.danvega.codingagent.chat.controller;
 import dev.danvega.codingagent.applicationconfig.constants.ApiConstants;
 import dev.danvega.codingagent.assistant.entity.Assistant;
 import dev.danvega.codingagent.assistant.service.AssistantService;
+import dev.danvega.codingagent.chat.guard.ScopeGuardService;
 import dev.danvega.codingagent.chat.service.ChatSessionService;
 import dev.danvega.codingagent.chat.tooling.BuiltinToolCatalog;
 import dev.danvega.codingagent.chat.tooling.DynamicToolRegistry;
@@ -21,6 +22,9 @@ import org.springaicommunity.agent.tools.ShellTools;
 import org.springaicommunity.agent.tools.SkillsTool;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Value;
@@ -83,6 +87,8 @@ public class ChatController {
     private final SearchToolsCallback searchToolsCallback;
     private final InvokeToolCallback invokeToolCallback;
     private final SkillWorkspaceService skillWorkspaceService;
+    private final ScopeGuardService scopeGuardService;
+    private final ChatMemory chatMemory;
 
     @Value("${agent.tool-search.threshold:15}")
     private int toolSearchThreshold;
@@ -97,7 +103,9 @@ public class ChatController {
                           DynamicToolRegistry dynamicToolRegistry,
                           SearchToolsCallback searchToolsCallback,
                           InvokeToolCallback invokeToolCallback,
-                          SkillWorkspaceService skillWorkspaceService) {
+                          SkillWorkspaceService skillWorkspaceService,
+                          ScopeGuardService scopeGuardService,
+                          ChatMemory chatMemory) {
         this.chatClient = chatClient;
         this.chatSessionService = chatSessionService;
         this.assistantService = assistantService;
@@ -109,6 +117,8 @@ public class ChatController {
         this.searchToolsCallback = searchToolsCallback;
         this.invokeToolCallback = invokeToolCallback;
         this.skillWorkspaceService = skillWorkspaceService;
+        this.scopeGuardService = scopeGuardService;
+        this.chatMemory = chatMemory;
     }
 
     public record Chunk(String text) {}
@@ -132,6 +142,31 @@ public class ChatController {
             toolCallbacks.addAll(builtinToolCatalog.callbacksFor(
                     assistantService.builtinToolKeys(assistant)));
             toolCallbacks.addAll(httpToolCallbackFactory.callbacksForAssistant(assistantId));
+        }
+
+        // Scope guard (hard pre-check): when the assistant has a defined role, classify the message
+        // before reaching the main model. Out-of-scope messages are short-circuited with a redirect —
+        // no model call, no tools. Disabled / no-role => allowed; classifier errors fail open.
+        if (!systemPrompt.isBlank()) {
+            List<String> toolSummaries = toolCallbacks.stream()
+                    .map(cb -> cb.getToolDefinition().name() + " — " + cb.getToolDefinition().description())
+                    .toList();
+            List<Message> recentHistory = chatMemory.get(sessionId);
+            ScopeGuardService.Decision decision =
+                    scopeGuardService.check(systemPrompt, toolSummaries, recentHistory, message);
+            if (!decision.allowed()) {
+                String redirect = decision.redirect();
+                // Persist the turn so a reload shows it (the memory advisor only auto-saves on a real
+                // model call, which we are deliberately skipping here).
+                try {
+                    chatMemory.add(sessionId,
+                            List.of(new UserMessage(message), new AssistantMessage(redirect)));
+                } catch (RuntimeException e) {
+                    log.warn("Failed to persist scope-guard refusal for session {}: {}", sessionId, e.getMessage());
+                }
+                log.debug("Scope guard blocked an out-of-scope message for session {}", sessionId);
+                return Flux.just(sse("message", new Chunk(redirect)), sse("done", new Chunk("")));
+            }
         }
 
         String requestId = UUID.randomUUID().toString();

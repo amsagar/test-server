@@ -41,3 +41,9 @@ azure:
     blob:
       connection-string: "DefaultEndpointsProtocol=https;AccountName=openfga;AccountKey=3qRPjRUAleZDRiDuHaZxCcrPFLAABAeLK/lSIuIDPTTo1CBgnzFIg+TvPvynr1sL5EtL7aIofTix+AStN2labg==;EndpointSuffix=core.windows.net"
       skills-container: agent-skills
+
+agent:
+  # When true, each user message is first classified against the selected assistant's role; off-topic
+  # messages are blocked with a short redirect instead of reaching the main model. See ScopeGuardService.
+  scope-guard:
+    enabled: true

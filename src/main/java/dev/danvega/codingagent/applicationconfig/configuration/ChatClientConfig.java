@@ -41,4 +41,17 @@ public class ChatClientConfig {
                 .defaultSystem(titlePrompt)
                 .build();
     }
+
+    /**
+     * Stateless classifier used by the scope guard to decide whether a user message is in scope for
+     * the selected assistant. No memory advisor — each classification is independent.
+     */
+    @Bean
+    @Qualifier("scopeGuardChatClient")
+    public ChatClient scopeGuardChatClient(ChatClient.Builder builder,
+                                           @Value("classpath:prompts/scope-guard-system.md") Resource scopeGuardPrompt) {
+        return builder
+                .defaultSystem(scopeGuardPrompt)
+                .build();
+    }
 }
