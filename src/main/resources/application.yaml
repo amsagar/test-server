@@ -21,6 +21,7 @@ spring:
         - classpath:sql-models/agent-skill-model.sql
         - classpath:sql-models/agent-document-model.sql
         - classpath:sql-models/chat-tool-event-model.sql
+        - classpath:sql-models/response-style-model.sql
   ai:
     azure:
       openai:

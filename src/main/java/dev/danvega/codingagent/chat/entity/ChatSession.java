@@ -12,6 +12,7 @@ public class ChatSession {
     private String title;
     private boolean archived;
     private String assistantId;
+    private String styleId;
     private Long createdAt;
     private Long updatedAt;
 }

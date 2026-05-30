@@ -168,6 +168,34 @@ export const api = {
 
   deleteDocument: (id) =>
     fetch(`/api/documents/${id}`, { method: "DELETE" }).then(ok),
+
+  // --- response styles ---
+  listStyles: () => fetch(`/api/response-styles`).then(json),
+
+  createStyle: (body) =>
+    fetch(`/api/response-styles`, {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify(body),
+    }).then(json),
+
+  updateStyle: (id, body) =>
+    fetch(`/api/response-styles/${id}`, {
+      method: "PATCH",
+      headers: jsonHeaders,
+      body: JSON.stringify(body),
+    }).then(json),
+
+  deleteStyle: (id) =>
+    fetch(`/api/response-styles/${id}`, { method: "DELETE" }).then(ok),
+
+  // Pin (or clear, with "") a response style on a session.
+  setSessionStyle: (id, styleId) =>
+    fetch(`/api/sessions/${id}`, {
+      method: "PATCH",
+      headers: jsonHeaders,
+      body: JSON.stringify({ styleId: styleId || "" }),
+    }).then(json),
 };
 
 export function relativeTime(epochSeconds) {

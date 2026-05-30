@@ -116,6 +116,10 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         if (request.getArchived() != null) {
             repository.updateArchived(id, request.getArchived(), now);
         }
+        if (request.getStyleId() != null) {
+            // Blank clears the pinned style (FK is nullable); a value pins it.
+            repository.updateStyle(id, request.getStyleId().isBlank() ? null : request.getStyleId(), now);
+        }
         return repository.findById(id).map(this::toDto)
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + id));
     }
@@ -197,6 +201,14 @@ public class ChatSessionServiceImpl implements ChatSessionService {
                 .orElseGet(assistantService::defaultAssistantId);
     }
 
+    @Override
+    public String resolveStyleId(String sessionId) {
+        return repository.findById(sessionId)
+                .map(ChatSession::getStyleId)
+                .filter(s -> s != null && !s.isBlank())
+                .orElse(null);
+    }
+
     private void requireSession(String id) {
         if (repository.findById(id).isEmpty()) {
             throw new ResourceNotFoundException("Session not found: " + id);
@@ -209,6 +221,7 @@ public class ChatSessionServiceImpl implements ChatSessionService {
                 .title(s.getTitle())
                 .archived(s.isArchived())
                 .assistantId(s.getAssistantId())
+                .styleId(s.getStyleId())
                 .createdAt(s.getCreatedAt())
                 .updatedAt(s.getUpdatedAt())
                 .build();

@@ -63,6 +63,11 @@ public class ChatSessionRepository {
         return jdbcTemplate.update(sql, now, id);
     }
 
+    public int updateStyle(String id, String styleId, long now) {
+        String sql = sqlQueryLoader.getQuery("CHAT.SESSION.UPDATE_STYLE");
+        return jdbcTemplate.update(sql, styleId, now, id);
+    }
+
     public int delete(String id) {
         String sql = sqlQueryLoader.getQuery("CHAT.SESSION.DELETE");
         return jdbcTemplate.update(sql, id);
@@ -74,6 +79,7 @@ public class ChatSessionRepository {
                 rs.getString("title"),
                 rs.getBoolean("archived"),
                 rs.getString("assistant_id"),
+                rs.getString("style_id"),
                 rs.getLong("created_at"),
                 rs.getLong("updated_at")
         );

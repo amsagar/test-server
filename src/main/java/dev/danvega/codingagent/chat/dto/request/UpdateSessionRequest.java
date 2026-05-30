@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class UpdateSessionRequest {
     private String title;
     private Boolean archived;
+    private String styleId;
 }

@@ -14,6 +14,7 @@ public class ChatSessionDto {
     private String title;
     private boolean archived;
     private String assistantId;
+    private String styleId;
     private Long createdAt;
     private Long updatedAt;
 }

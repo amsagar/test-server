@@ -428,7 +428,11 @@ body {
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
+}
+
+.header > span:first-child {
+  margin-right: auto;
 }
 
 .header-assistant {
@@ -439,6 +443,15 @@ body {
   border: 1px solid #232634;
   border-radius: 999px;
   padding: 4px 12px;
+}
+
+.style-picker {
+  font-size: 13px;
+  color: #c8ccd4;
+  background: #1b1e29;
+  border: 1px solid #232634;
+  border-radius: 999px;
+  padding: 4px 10px;
 }
 
 .modal-backdrop {

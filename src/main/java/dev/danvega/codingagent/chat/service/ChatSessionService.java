@@ -25,4 +25,7 @@ public interface ChatSessionService {
     void delete(String id);
 
     String resolveAssistantId(String sessionId);
+
+    /** The response-style id pinned to a session, or {@code null} if none is set. */
+    String resolveStyleId(String sessionId);
 }

@@ -16,6 +16,7 @@ import dev.danvega.codingagent.chat.tooling.ToolEventSink;
 import dev.danvega.codingagent.document.dto.response.DocumentDto;
 import dev.danvega.codingagent.document.service.DocumentService;
 import dev.danvega.codingagent.skill.runtime.SkillWorkspaceService;
+import dev.danvega.codingagent.style.service.ResponseStyleService;
 import dev.danvega.codingagent.tool.runtime.HttpToolCallbackFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +99,7 @@ public class ChatController {
     private final ChatMemory chatMemory;
     private final DocumentService documentService;
     private final VectorStore vectorStore;
+    private final ResponseStyleService responseStyleService;
     private final QuestionAnswerAdvisor ragAdvisor;
 
     /** Similarity threshold the RAG advisor uses to decide which chunks to inject into the prompt. */
@@ -128,7 +130,8 @@ public class ChatController {
                           ScopeGuardService scopeGuardService,
                           ChatMemory chatMemory,
                           DocumentService documentService,
-                          VectorStore vectorStore) {
+                          VectorStore vectorStore,
+                          ResponseStyleService responseStyleService) {
         this.chatClient = chatClient;
         this.chatSessionService = chatSessionService;
         this.assistantService = assistantService;
@@ -144,6 +147,7 @@ public class ChatController {
         this.chatMemory = chatMemory;
         this.documentService = documentService;
         this.vectorStore = vectorStore;
+        this.responseStyleService = responseStyleService;
         // RAG advisor: retrieves the most relevant chunks from the pgvector store BEFORE the model
         // call and augments the prompt. The default search request is overridden per request with a
         // FILTER_EXPRESSION that scopes retrieval to the selected assistant's documents.
@@ -160,7 +164,8 @@ public class ChatController {
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<Object>> stream(@RequestParam String sessionId,
-                                                @RequestParam String message) {
+                                                @RequestParam String message,
+                                                @RequestParam(required = false) String styleId) {
         chatSessionService.touchAndMaybeTitle(sessionId, message);
 
         String assistantId = chatSessionService.resolveAssistantId(sessionId);
@@ -248,9 +253,22 @@ public class ChatController {
         // let the model discover/dispatch the real tools on demand. The real (instrumented) tools
         // are stashed in the DynamicToolRegistry so invoke_tool can route to them by name, keeping
         // the existing event/UI/persistence behavior for the underlying tool calls.
+        // Response style: an explicit per-message styleId overrides the session's pinned style.
+        // Style shapes structure/tone and applies even when the assistant has no role prompt, so it
+        // is composed into the base prompt (before the tool hint and scope guardrail) below.
+        String resolvedStyleId = (styleId != null && !styleId.isBlank())
+                ? styleId : chatSessionService.resolveStyleId(sessionId);
+        String styleInstructions = responseStyleService.instructionsFor(resolvedStyleId);
+        String basePrompt = systemPrompt;
+        if (styleInstructions != null) {
+            basePrompt = (basePrompt.isBlank() ? "" : basePrompt + "\n\n")
+                    + "RESPONSE STYLE — follow these formatting/tone instructions for your reply:\n"
+                    + styleInstructions;
+        }
+
         boolean searchMode = toolCallbacks.size() > toolSearchThreshold;
         List<ToolCallback> toolsToSend;
-        String effectiveSystemPrompt = systemPrompt;
+        String effectiveSystemPrompt = basePrompt;
         if (searchMode) {
             Map<String, ToolCallback> catalog = new LinkedHashMap<>();
             for (ToolCallback cb : toolCallbacks) {
@@ -261,7 +279,7 @@ public class ChatController {
             toolsToSend = new ArrayList<>(List.of(
                     new EventEmittingToolCallback(searchToolsCallback, toolEventRegistry),
                     invokeToolCallback));
-            effectiveSystemPrompt = (systemPrompt.isBlank() ? "" : systemPrompt + "\n\n") + TOOL_SEARCH_HINT;
+            effectiveSystemPrompt = (basePrompt.isBlank() ? "" : basePrompt + "\n\n") + TOOL_SEARCH_HINT;
         } else {
             toolsToSend = toolCallbacks.stream()
                     .map(cb -> (ToolCallback) new EventEmittingToolCallback(cb, toolEventRegistry))

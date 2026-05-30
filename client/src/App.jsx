@@ -7,6 +7,7 @@ import ToolsPanel from "./components/ToolsPanel";
 import AuthProfilesPanel from "./components/AuthProfilesPanel";
 import SkillsPanel from "./components/SkillsPanel";
 import DocumentsPanel from "./components/DocumentsPanel";
+import StylesPanel from "./components/StylesPanel";
 
 export default function App() {
   const [sessions, setSessions] = useState([]);
@@ -26,6 +27,8 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [showSkills, setShowSkills] = useState(false);
   const [showDocuments, setShowDocuments] = useState(false);
+  const [showStyles, setShowStyles] = useState(false);
+  const [styles, setStyles] = useState([]);
   const esRef = useRef(null);
   const scrollRef = useRef(null);
 
@@ -35,6 +38,7 @@ export default function App() {
 
   useEffect(() => {
     refreshAssistants();
+    refreshStyles();
   }, []);
 
   useEffect(() => {
@@ -63,8 +67,29 @@ export default function App() {
     }
   }
 
+  async function refreshStyles() {
+    try {
+      setStyles(await api.listStyles());
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   function assistantName(id) {
     return assistants.find((a) => a.id === id)?.name || "Assistant";
+  }
+
+  // Pin a response style on the current session (empty string clears it).
+  async function changeSessionStyle(styleId) {
+    if (!currentId) return;
+    try {
+      const updated = await api.setSessionStyle(currentId, styleId);
+      setSessions((prev) =>
+        prev.map((s) => (s.id === currentId ? { ...s, styleId: updated.styleId } : s))
+      );
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   async function openSession(id) {
@@ -108,10 +133,13 @@ export default function App() {
     ]);
     setStreaming(true);
 
+    const styleId = sessions.find((s) => s.id === sid)?.styleId;
     const es = new EventSource(
       `/api/chat/stream?sessionId=${encodeURIComponent(
         sid
-      )}&message=${encodeURIComponent(text)}`
+      )}&message=${encodeURIComponent(text)}${
+        styleId ? `&styleId=${encodeURIComponent(styleId)}` : ""
+      }`
     );
     esRef.current = es;
 
@@ -284,6 +312,13 @@ export default function App() {
           >
             📄
           </button>
+          <button
+            className="icon-btn"
+            title="Manage response styles"
+            onClick={() => setShowStyles(true)}
+          >
+            🎭
+          </button>
         </div>
 
         <div className="toggle">
@@ -364,6 +399,21 @@ export default function App() {
                 {assistantName(selectedAssistantId)}
               </span>
             )
+          )}
+          {currentId && (
+            <select
+              className="style-picker"
+              title="Response style"
+              value={sessions.find((s) => s.id === currentId)?.styleId || ""}
+              onChange={(e) => changeSessionStyle(e.target.value)}
+            >
+              <option value="">Default style</option>
+              {styles.map((s) => (
+                <option key={s.id} value={s.id}>
+                  🎭 {s.name}
+                </option>
+              ))}
+            </select>
           )}
         </header>
 
@@ -504,6 +554,12 @@ export default function App() {
       {showDocuments && (
         <Modal title="RAG documents" wide onClose={() => setShowDocuments(false)}>
           <DocumentsPanel />
+        </Modal>
+      )}
+
+      {showStyles && (
+        <Modal title="Response styles" wide onClose={() => setShowStyles(false)}>
+          <StylesPanel onChanged={refreshStyles} />
         </Modal>
       )}
     </div>
