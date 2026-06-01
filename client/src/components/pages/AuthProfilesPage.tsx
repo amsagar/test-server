@@ -16,14 +16,55 @@ import type {
 } from '@interfaces/auth.interface';
 import * as styles from '@styles/resourcePanel.module.scss';
 
-const EMPTY: CreateAuthProfileRequest = {
+interface AuthProfileFormState {
+  name: string;
+  description: string;
+  authType: string;
+  authConfig: string;
+  clientId: string;
+  clientSecret: string;
+  tokenUrl: string;
+  scopes: string;
+}
+
+const EMPTY: AuthProfileFormState = {
   name: '',
   description: '',
   authType: 'none',
   authConfig: '',
+  clientId: '',
   clientSecret: '',
   tokenUrl: '',
   scopes: '',
+};
+
+const parseAuthConfig = (raw?: string | null): Record<string, string> => {
+  if (!raw?.trim()) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(parsed).map(([k, v]) => [k, String(v ?? '')])
+    );
+  } catch {
+    return {};
+  }
+};
+
+const buildAuthConfigForSave = (
+  authType: string,
+  authConfigRaw: string,
+  clientId: string
+): string | undefined => {
+  if (authType === 'oauth_client_credentials') {
+    const next: Record<string, string> = {};
+    if (clientId.trim()) next.clientId = clientId.trim();
+    return Object.keys(next).length > 0 ? JSON.stringify(next) : undefined;
+  }
+  const trimmed = authConfigRaw.trim();
+  return trimmed || undefined;
 };
 
 const AuthProfilesPage: React.FC = () => {
@@ -31,7 +72,7 @@ const AuthProfilesPage: React.FC = () => {
   const { assistantId } = useSettingsScope();
   const [items, setItems] = useState<ToolAuthProfileDto[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<CreateAuthProfileRequest>(EMPTY);
+  const [form, setForm] = useState<AuthProfileFormState>(EMPTY);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -66,12 +107,14 @@ const AuthProfilesPage: React.FC = () => {
   };
 
   const startEdit = (p: ToolAuthProfileDto) => {
+    const cfg = parseAuthConfig(p.authConfig);
     setEditingId(p.id);
     setForm({
       name: p.name,
       description: p.description,
       authType: p.authType,
       authConfig: p.authConfig || '',
+      clientId: cfg.clientId || '',
       clientSecret: '',
       tokenUrl: p.tokenUrl || '',
       scopes: p.scopes || '',
@@ -90,13 +133,24 @@ const AuthProfilesPage: React.FC = () => {
       setError('Name and auth type are required.');
       return;
     }
+    if (
+      form.authType === 'oauth_client_credentials' &&
+      !form.clientId.trim()
+    ) {
+      setError('Client ID is required for OAuth client credentials.');
+      return;
+    }
     setSaving(true);
     try {
       const body: CreateAuthProfileRequest = {
         name: form.name.trim(),
         description: form.description?.trim() || '',
         authType: form.authType,
-        authConfig: form.authConfig?.trim() || undefined,
+        authConfig: buildAuthConfigForSave(
+          form.authType,
+          form.authConfig,
+          form.clientId
+        ),
         clientSecret: form.clientSecret?.trim() || undefined,
         tokenUrl: form.tokenUrl?.trim() || undefined,
         scopes: form.scopes?.trim() || undefined,
@@ -202,18 +256,22 @@ const AuthProfilesPage: React.FC = () => {
           fullWidth
         />
 
-        <label className={styles.fieldLabel}>
-          Auth config (JSON, non-secret fields)
-        </label>
-        <CustomTextarea
-          value={form.authConfig || ''}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, authConfig: e.target.value }))
-          }
-          placeholder='e.g. {"name":"X-Api-Key"} or {"clientId":"..."}'
-          autoSize={{ minRows: 3, maxRows: 10 }}
-          fullWidth
-        />
+        {!showOAuth && (
+          <>
+            <label className={styles.fieldLabel}>
+              Auth config (JSON, non-secret fields)
+            </label>
+            <CustomTextarea
+              value={form.authConfig || ''}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, authConfig: e.target.value }))
+              }
+              placeholder='e.g. {"name":"X-Api-Key"} or {"username":"..."}'
+              autoSize={{ minRows: 3, maxRows: 10 }}
+              fullWidth
+            />
+          </>
+        )}
 
         {showOAuth && (
           <>
@@ -224,6 +282,37 @@ const AuthProfilesPage: React.FC = () => {
                 setForm((f) => ({ ...f, tokenUrl: e.target.value }))
               }
               placeholder="https://example.com/oauth/token"
+              fullWidth
+            />
+            <label className={styles.fieldLabel}>Client ID</label>
+            <CustomInput
+              value={form.clientId}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, clientId: e.target.value }))
+              }
+              placeholder="OAuth client ID"
+              fullWidth
+            />
+            <label className={styles.fieldLabel}>
+              Client secret
+              {currentEditing?.hasClientSecret && (
+                <>
+                  {' '}
+                  <CustomTag tone="info">stored</CustomTag>
+                </>
+              )}
+            </label>
+            <CustomInput
+              type="password"
+              value={form.clientSecret || ''}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, clientSecret: e.target.value }))
+              }
+              placeholder={
+                currentEditing?.hasClientSecret
+                  ? 'Leave blank to keep current secret'
+                  : 'Plaintext secret (encrypted server-side)'
+              }
               fullWidth
             />
             <label className={styles.fieldLabel}>Scopes (space-separated)</label>
@@ -238,10 +327,10 @@ const AuthProfilesPage: React.FC = () => {
           </>
         )}
 
-        {showAnySecret && (
+        {showAnySecret && !showOAuth && (
           <>
             <label className={styles.fieldLabel}>
-              {showOAuth ? 'Client secret' : 'Secret'}
+              Secret
               {currentEditing?.hasClientSecret && (
                 <>
                   {' '}
