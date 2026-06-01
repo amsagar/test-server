@@ -28,22 +28,23 @@ public class ToolAuthProfileRepository {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, new String[] { "id" });
-            ps.setString(1, p.getName());
-            ps.setString(2, p.getDescription());
-            ps.setString(3, p.getAuthType());
-            ps.setString(4, p.getAuthConfig());
-            ps.setString(5, p.getEncryptedClientSecret());
-            ps.setString(6, p.getTokenUrl());
-            ps.setString(7, p.getScopes());
-            ps.setLong(8, now);
+            ps.setString(1, p.getAssistantId());
+            ps.setString(2, p.getName());
+            ps.setString(3, p.getDescription());
+            ps.setString(4, p.getAuthType());
+            ps.setString(5, p.getAuthConfig());
+            ps.setString(6, p.getEncryptedClientSecret());
+            ps.setString(7, p.getTokenUrl());
+            ps.setString(8, p.getScopes());
             ps.setLong(9, now);
+            ps.setLong(10, now);
             return ps;
         }, keyHolder);
         return String.valueOf(keyHolder.getKeys().get("id"));
     }
 
-    public List<ToolAuthProfile> findAll() {
-        return jdbcTemplate.query(sqlQueryLoader.getQuery("TOOL_AUTH.FIND_ALL"), rowMapper());
+    public List<ToolAuthProfile> findByAssistant(String assistantId) {
+        return jdbcTemplate.query(sqlQueryLoader.getQuery("TOOL_AUTH.FIND_BY_ASSISTANT"), rowMapper(), assistantId);
     }
 
     public Optional<ToolAuthProfile> findById(String id) {
@@ -69,6 +70,7 @@ public class ToolAuthProfileRepository {
     private RowMapper<ToolAuthProfile> rowMapper() {
         return (rs, rowNum) -> new ToolAuthProfile(
                 rs.getString("id"),
+                rs.getString("assistant_id"),
                 rs.getString("name"),
                 rs.getString("description"),
                 rs.getString("auth_type"),

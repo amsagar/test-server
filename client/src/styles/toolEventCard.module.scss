@@ -1,0 +1,73 @@
+@use './colors' as *;
+
+.card {
+  border: 1px solid $tool_card_border;
+  border-radius: $radius_md;
+  margin-bottom: 8px;
+  background: $tool_card_bg;
+  overflow: hidden;
+}
+
+.error {
+  border-color: $tool_card_error_border;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.head:hover {
+  background: $white_3;
+}
+
+.status {
+  font-size: 12px;
+  width: 18px;
+  text-align: center;
+}
+
+.name {
+  flex: 1;
+  font-family: $font_mono;
+  color: $dark_blue;
+  font-weight: 500;
+}
+
+.caret {
+  color: $muted;
+}
+
+.body {
+  padding: 4px 10px 10px;
+  border-top: 1px solid $divider;
+  background: $bg_surface;
+}
+
+.label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $muted;
+  margin: 8px 0 4px;
+}
+
+.pre {
+  margin: 0;
+  background: $code_bg;
+  border: 1px solid $divider;
+  border-radius: $radius_sm;
+  padding: 8px;
+  overflow-x: auto;
+  font-family: $font_mono;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow-y: auto;
+  color: $black;
+}

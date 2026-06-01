@@ -8,8 +8,6 @@ import dev.danvega.codingagent.style.entity.ResponseStyle;
 import dev.danvega.codingagent.style.repo.ResponseStyleRepository;
 import dev.danvega.codingagent.style.service.ResponseStyleService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -25,30 +23,9 @@ public class ResponseStyleServiceImpl implements ResponseStyleService {
         this.repository = repository;
     }
 
-    /** Seed built-in presets once, after the schema has been initialized and the context is ready. */
-    @EventListener(ApplicationReadyEvent.class)
-    public void seedPresets() {
-        try {
-            if (repository.count() > 0) {
-                return;
-            }
-            long now = Instant.now().getEpochSecond();
-            for (Preset p : PRESETS) {
-                ResponseStyle s = new ResponseStyle();
-                s.setName(p.name());
-                s.setDescription(p.description());
-                s.setInstructions(p.instructions());
-                repository.create(s, now);
-            }
-            log.info("Seeded {} built-in response styles", PRESETS.size());
-        } catch (RuntimeException e) {
-            log.warn("Failed to seed response style presets: {}", e.getMessage());
-        }
-    }
-
     @Override
-    public List<ResponseStyleDto> list() {
-        return repository.findAll().stream().map(this::toDto).toList();
+    public List<ResponseStyleDto> list(String assistantId) {
+        return repository.findByAssistant(assistantId).stream().map(this::toDto).toList();
     }
 
     @Override
@@ -57,9 +34,10 @@ public class ResponseStyleServiceImpl implements ResponseStyleService {
     }
 
     @Override
-    public ResponseStyleDto create(CreateStyleRequest request) {
+    public ResponseStyleDto create(String assistantId, CreateStyleRequest request) {
         long now = Instant.now().getEpochSecond();
         ResponseStyle s = new ResponseStyle();
+        s.setAssistantId(assistantId);
         s.setName(required(request.getName(), "name"));
         s.setDescription(request.getDescription());
         s.setInstructions(required(request.getInstructions(), "instructions"));
@@ -126,39 +104,4 @@ public class ResponseStyleServiceImpl implements ResponseStyleService {
         }
         return value.trim();
     }
-
-    private record Preset(String name, String description, String instructions) {
-    }
-
-    private static final List<Preset> PRESETS = List.of(
-            new Preset("Concise",
-                    "Short, direct answers with no filler.",
-                    "Answer as briefly as possible. Lead with the direct answer in one or two sentences. "
-                            + "Omit pleasantries, caveats, and background unless explicitly asked. "
-                            + "Prefer the shortest correct response."),
-            new Preset("Detailed / Technical",
-                    "Thorough, precise explanations for technical readers.",
-                    "Give a thorough, technically precise answer. Explain the reasoning and any relevant "
-                            + "trade-offs, edge cases, and assumptions. Use correct terminology and include code "
-                            + "or concrete examples where they aid understanding. Assume an expert audience."),
-            new Preset("ELI5",
-                    "Plain-language explanations a beginner can follow.",
-                    "Explain things as if to a curious beginner. Avoid jargon; when a technical term is "
-                            + "unavoidable, define it in plain language. Use simple analogies and everyday examples. "
-                            + "Keep sentences short and friendly."),
-            new Preset("Executive Summary",
-                    "Outcome-focused summary for decision-makers.",
-                    "Respond like a briefing for a busy executive. Start with the bottom line / recommendation, "
-                            + "then 2-4 supporting points. Focus on outcomes, impact, and decisions rather than "
-                            + "implementation detail. Keep it tight and skimmable."),
-            new Preset("Friendly Coach",
-                    "Warm, encouraging, step-by-step guidance.",
-                    "Respond like a supportive coach. Be warm and encouraging, break guidance into clear "
-                            + "actionable steps, and check the reader's understanding along the way. Motivate without "
-                            + "being condescending."),
-            new Preset("Bulleted",
-                    "Scannable bullet-point structure.",
-                    "Structure the entire response as scannable bullet points and short headings rather than "
-                            + "prose paragraphs. Keep each bullet to a single idea. Use nested bullets for detail.")
-    );
 }

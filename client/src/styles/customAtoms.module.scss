@@ -1,0 +1,375 @@
+@use './colors' as *;
+
+// CustomButton
+.btn {
+  font-family: $font_family;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btnPrimary {
+  background: $coral !important;
+  border-color: $coral !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(201, 99, 66, 0.16) !important;
+}
+
+.btnPrimary:hover {
+  background: $coral_hover !important;
+  border-color: $coral_hover !important;
+}
+
+.btnPrimary:active {
+  background: $coral_active !important;
+  border-color: $coral_active !important;
+}
+
+.btnDanger {
+  background: $danger !important;
+  border-color: $danger !important;
+  color: #ffffff !important;
+}
+
+.btnGhost {
+  background: transparent !important;
+  border-color: $cream_300 !important;
+  color: $ink_700 !important;
+}
+
+.btnGhost:hover {
+  background: $cream_100 !important;
+  border-color: $cream_400 !important;
+  color: $ink_900 !important;
+}
+
+.btnText {
+  background: transparent !important;
+  border: none !important;
+  color: $ink_500 !important;
+  padding: 4px 8px !important;
+  height: auto !important;
+}
+
+.btnText:hover {
+  background: $cream_100 !important;
+  color: $ink_900 !important;
+}
+
+.btnFull {
+  width: 100%;
+}
+
+// CustomTooltip overlay
+.tooltipOverlay :global(.ant-tooltip-inner) {
+  background: $ink_900 !important;
+  color: #f6f4ed !important;
+  font-family: $font_family !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  border-radius: $radius_sm !important;
+  padding: 5px 10px !important;
+  min-height: auto !important;
+  box-shadow: 0 4px 14px rgba(43, 42, 38, 0.18) !important;
+}
+
+.tooltipOverlay :global(.ant-tooltip-arrow::before) {
+  background: $ink_900 !important;
+}
+
+// CustomModal
+.modalOverlay :global(.ant-modal-content) {
+  border-radius: $radius_lg;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid $divider;
+}
+
+.modalOverlay :global(.ant-modal-header) {
+  display: none;
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid $divider;
+  background: $bg_surface;
+}
+
+.modalTitle {
+  font-weight: 600;
+  font-size: 15px;
+  color: $dark_blue;
+  flex: 1;
+}
+
+.modalClose {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: $muted;
+  padding: 4px 8px;
+  border-radius: $radius_sm;
+}
+
+.modalClose:hover {
+  background: $white_3;
+  color: $black;
+}
+
+.modalBody {
+  padding: 18px;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.modalFooter {
+  padding: 12px 18px;
+  border-top: 1px solid $divider;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background: $bg_surface;
+}
+
+.confirmBody {
+  font-size: 14px;
+  color: $black;
+  line-height: 1.6;
+  padding: 4px 0;
+}
+
+// CustomDrawer
+.drawer :global(.ant-drawer-header) {
+  display: none;
+}
+
+.drawerInner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: $bg_surface;
+}
+
+.drawerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid $divider;
+  background: $bg_surface;
+  flex-shrink: 0;
+}
+
+.drawerTitle {
+  font-weight: 600;
+  font-size: 15px;
+  color: $dark_blue;
+}
+
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  background: $bg_surface;
+}
+
+.drawerResizer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 100;
+  background: transparent;
+  transition: background-color 0.2s;
+}
+
+.drawerResizerActive {
+  background: $blue;
+}
+
+// CustomInput / CustomTextarea
+.input :global(.ant-input),
+.input :global(.ant-input-affix-wrapper),
+.input :global(.ant-input-number-input),
+.textarea :global(.ant-input) {
+  border-radius: $radius_md;
+  font-family: $font_family;
+}
+
+.input :global(.ant-input:focus),
+.input :global(.ant-input-focused),
+.input :global(.ant-input-affix-wrapper:focus),
+.input :global(.ant-input-affix-wrapper-focused),
+.textarea :global(.ant-input:focus) {
+  border-color: $coral !important;
+  box-shadow: 0 0 0 3px rgba(201, 99, 66, 0.12) !important;
+}
+
+.textarea :global(.ant-input) {
+  font-size: 15px;
+  line-height: 1.55;
+  background: transparent;
+  resize: none;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+// CustomSelect / CustomDropdown
+.select :global(.ant-select-selector) {
+  border-radius: $radius_md !important;
+  font-family: $font_family;
+}
+
+.selectPopup {
+  font-family: $font_family !important;
+  border-radius: $radius_md !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+.selectPopup :global(.ant-select-item) {
+  font-family: $font_family;
+  padding: 8px 12px;
+}
+
+.selectPopup :global(.ant-select-item-option-selected) {
+  background-color: $hover_blue !important;
+  color: $dark_blue !important;
+  font-weight: 500;
+}
+
+.dropdownPopup {
+  font-family: $font_family !important;
+  border-radius: $radius_md !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+.dropdownPopup :global(.ant-dropdown-menu) {
+  border-radius: $radius_md !important;
+  font-family: $font_family;
+  padding: 4px;
+}
+
+.dropdownPopup :global(.ant-dropdown-menu-item) {
+  border-radius: $radius_sm;
+  font-size: 13px;
+}
+
+// CustomFilter (table column filter)
+.filter {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  max-width: 280px;
+  background: $bg_surface;
+  border-radius: $radius_md;
+}
+
+.filterList {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+}
+
+.filterOption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: $radius_sm;
+  font-size: 13px;
+}
+
+.filterOption:hover {
+  background: $white_3;
+}
+
+.filterActions {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid $divider;
+}
+
+// CustomTag
+.tag {
+  font-family: $font_family;
+  border-radius: $radius_pill;
+  font-weight: 500;
+  font-size: 12px;
+  padding: 2px 10px;
+}
+
+// CustomFileUpload
+.upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.uploadDropzone {
+  border: 1px dashed $divider;
+  border-radius: $radius_md;
+  padding: 18px;
+  text-align: center;
+  color: $muted;
+  cursor: pointer;
+  background: $bg_subtle;
+}
+
+.uploadDropzone:hover {
+  border-color: $blue;
+  color: $blue;
+}
+
+.uploadFile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid $divider;
+  border-radius: $radius_md;
+  background: $bg_subtle;
+  font-size: 13px;
+}
+
+.uploadFileName {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// CustomEmptyState
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  color: $muted;
+  gap: 8px;
+  text-align: center;
+}
+
+.emptyTitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: $black;
+}

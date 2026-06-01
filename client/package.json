@@ -1,20 +1,57 @@
 {
   "name": "codingagent-client",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.1",
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "cross-env NODE_ENV=development webpack serve --config webpack.config.js --mode development",
+    "build": "cross-env NODE_ENV=production webpack --config webpack.config.js --mode production",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,scss,css,json}\""
   },
   "dependencies": {
+    "@ant-design/icons": "^5.5.1",
+    "antd": "^5.21.0",
+    "axios": "^1.7.9",
+    "dayjs": "^1.11.13",
+    "lodash": "^4.17.21",
+    "normalize.css": "^8.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-markdown": "^9.0.1"
+    "react-markdown": "^9.0.1",
+    "react-router-dom": "^6.28.0",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^5.4.11"
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.4",
+    "@babel/preset-react": "^7.24.7",
+    "@babel/preset-typescript": "^7.25.7",
+    "@pmmmwh/react-refresh-webpack-plugin": "^0.5.15",
+    "@svgr/webpack": "^8.1.0",
+    "@types/lodash": "^4.17.19",
+    "@types/node": "^22.12.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "babel-loader": "^9.2.1",
+    "copy-webpack-plugin": "^12.0.2",
+    "cross-env": "^7.0.3",
+    "css-loader": "^7.1.2",
+    "dotenv": "^16.4.5",
+    "dotenv-webpack": "^8.1.0",
+    "eslint": "^8.57.1",
+    "html-webpack-plugin": "^5.6.0",
+    "mini-css-extract-plugin": "^2.9.1",
+    "prettier": "^3.3.3",
+    "react-refresh": "^0.16.0",
+    "sass": "^1.79.3",
+    "sass-loader": "^16.0.2",
+    "style-loader": "^4.0.0",
+    "typescript": "^5.6.3",
+    "url-loader": "^4.1.1",
+    "webpack": "^5.94.0",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.1.0"
   }
 }

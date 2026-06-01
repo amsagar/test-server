@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -30,8 +31,8 @@ public class ToolAuthController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ToolAuthProfileDto>> list() {
-        return ResponseEntity.ok(service.list());
+    public ResponseEntity<List<ToolAuthProfileDto>> list(@RequestParam String assistantId) {
+        return ResponseEntity.ok(service.list(assistantId));
     }
 
     @GetMapping("/{id}")
@@ -40,8 +41,9 @@ public class ToolAuthController {
     }
 
     @PostMapping
-    public ResponseEntity<ToolAuthProfileDto> create(@RequestBody CreateAuthProfileRequest request) {
-        return ResponseEntity.ok(service.create(request));
+    public ResponseEntity<ToolAuthProfileDto> create(@RequestParam String assistantId,
+                                                     @RequestBody CreateAuthProfileRequest request) {
+        return ResponseEntity.ok(service.create(assistantId, request));
     }
 
     @PatchMapping("/{id}")

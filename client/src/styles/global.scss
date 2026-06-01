@@ -1,0 +1,77 @@
+@use './colors' as *;
+
+@import url('https://rsms.me/inter/inter.css');
+
+html {
+  font-size: 15px;
+}
+
+body {
+  margin: 0;
+  font-family: $font_family;
+  background-color: $bg_app;
+  color: $ink_900;
+  padding: 0;
+  overflow: auto;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+@supports (font-variation-settings: normal) {
+  body {
+    font-family: 'InterVariable', $font_family;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  color: $coral;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+code,
+pre {
+  font-family: $font_mono;
+}
+
+::selection {
+  background: rgba(201, 99, 66, 0.18);
+  color: $ink_900;
+}
+
+/* Slim scrollbars in the warm palette */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: $cream_200;
+  border-radius: $radius_pill;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: $cream_300;
+  background-clip: content-box;
+}

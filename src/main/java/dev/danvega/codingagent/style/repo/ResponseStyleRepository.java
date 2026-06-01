@@ -28,18 +28,19 @@ public class ResponseStyleRepository {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, new String[] { "id" });
-            ps.setString(1, s.getName());
-            ps.setString(2, s.getDescription());
-            ps.setString(3, s.getInstructions());
-            ps.setLong(4, now);
+            ps.setString(1, s.getAssistantId());
+            ps.setString(2, s.getName());
+            ps.setString(3, s.getDescription());
+            ps.setString(4, s.getInstructions());
             ps.setLong(5, now);
+            ps.setLong(6, now);
             return ps;
         }, keyHolder);
         return String.valueOf(keyHolder.getKeys().get("id"));
     }
 
-    public List<ResponseStyle> findAll() {
-        return jdbcTemplate.query(sqlQueryLoader.getQuery("STYLE.FIND_ALL"), rowMapper());
+    public List<ResponseStyle> findByAssistant(String assistantId) {
+        return jdbcTemplate.query(sqlQueryLoader.getQuery("STYLE.FIND_BY_ASSISTANT"), rowMapper(), assistantId);
     }
 
     public Optional<ResponseStyle> findById(String id) {
@@ -56,14 +57,10 @@ public class ResponseStyleRepository {
         return jdbcTemplate.update(sqlQueryLoader.getQuery("STYLE.DELETE"), id);
     }
 
-    public long count() {
-        Long count = jdbcTemplate.queryForObject(sqlQueryLoader.getQuery("STYLE.COUNT"), Long.class);
-        return count == null ? 0 : count;
-    }
-
     private RowMapper<ResponseStyle> rowMapper() {
         return (rs, rowNum) -> new ResponseStyle(
                 rs.getString("id"),
+                rs.getString("assistant_id"),
                 rs.getString("name"),
                 rs.getString("description"),
                 rs.getString("instructions"),

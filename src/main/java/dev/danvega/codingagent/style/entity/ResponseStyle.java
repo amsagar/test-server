@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ResponseStyle {
     private String id;
+    private String assistantId;
     private String name;
     private String description;
     private String instructions;

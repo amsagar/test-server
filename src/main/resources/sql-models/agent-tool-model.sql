@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS tool_auth_profile (
     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    assistant_id             UUID NOT NULL REFERENCES assistant (id) ON DELETE CASCADE,
     name                     VARCHAR(200) NOT NULL,
     description              TEXT,
     auth_type                VARCHAR(50) NOT NULL DEFAULT 'none',
@@ -12,6 +13,17 @@ CREATE TABLE IF NOT EXISTS tool_auth_profile (
     created_at               BIGINT NOT NULL,
     updated_at               BIGINT NOT NULL
 );
+
+-- Auth profiles are now owned by exactly one assistant (mirrors agent_tool). Previously they were
+-- global. Migrate idempotently without dollar-quoted blocks (Spring's script runner splits on ';'
+-- and can't parse PL/pgSQL DO blocks): add the owner column as NULLABLE, drop any owner-less rows
+-- (only legacy global rows ever have NULL here), then enforce NOT NULL. Every statement is a no-op
+-- once migrated, so schema init (mode: always) does NOT wipe the table on restart. On a fresh DB the
+-- column already exists NOT NULL from CREATE above, so the DELETE matches nothing.
+ALTER TABLE tool_auth_profile ADD COLUMN IF NOT EXISTS assistant_id UUID REFERENCES assistant (id) ON DELETE CASCADE;
+DELETE FROM tool_auth_profile WHERE assistant_id IS NULL;
+ALTER TABLE tool_auth_profile ALTER COLUMN assistant_id SET NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_tool_auth_assistant ON tool_auth_profile (assistant_id);
 
 -- Tools are owned by exactly one assistant (mirrors agent_skill). Previously they were global and
 -- linked many-to-many via assistant_agent_tool; that join table is dropped below. Existing global
@@ -36,9 +48,11 @@ CREATE TABLE IF NOT EXISTS agent_tool (
     updated_at      BIGINT NOT NULL
 );
 
--- Migrate an older global agent_tool: clear rows, then add the owner column as NOT NULL (safe on the
--- now-empty table). On a fresh DB the column already exists from CREATE above and these are no-ops.
-DELETE FROM agent_tool;
-ALTER TABLE agent_tool ADD COLUMN IF NOT EXISTS assistant_id UUID NOT NULL REFERENCES assistant (id) ON DELETE CASCADE;
+-- Migrate an older global agent_tool idempotently (same pattern as tool_auth_profile above): add the
+-- owner column nullable, drop owner-less legacy rows, enforce NOT NULL. No-op once migrated, so this
+-- does NOT wipe tools on every restart.
+ALTER TABLE agent_tool ADD COLUMN IF NOT EXISTS assistant_id UUID REFERENCES assistant (id) ON DELETE CASCADE;
+DELETE FROM agent_tool WHERE assistant_id IS NULL;
+ALTER TABLE agent_tool ALTER COLUMN assistant_id SET NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_agent_tool_assistant ON agent_tool (assistant_id);

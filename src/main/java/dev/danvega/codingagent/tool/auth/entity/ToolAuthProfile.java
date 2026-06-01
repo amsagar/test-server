@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ToolAuthProfile {
     private String id;
+    private String assistantId;
     private String name;
     private String description;
     private String authType;

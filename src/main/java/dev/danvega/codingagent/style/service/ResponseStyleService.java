@@ -9,11 +9,11 @@ import java.util.List;
 
 public interface ResponseStyleService {
 
-    List<ResponseStyleDto> list();
+    List<ResponseStyleDto> list(String assistantId);
 
     ResponseStyleDto get(String id);
 
-    ResponseStyleDto create(CreateStyleRequest request);
+    ResponseStyleDto create(String assistantId, CreateStyleRequest request);
 
     ResponseStyleDto update(String id, UpdateStyleRequest request);
 

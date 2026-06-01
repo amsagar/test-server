@@ -28,8 +28,8 @@ public class ToolAuthProfileServiceImpl implements ToolAuthProfileService {
     }
 
     @Override
-    public List<ToolAuthProfileDto> list() {
-        return repository.findAll().stream().map(this::toDto).toList();
+    public List<ToolAuthProfileDto> list(String assistantId) {
+        return repository.findByAssistant(assistantId).stream().map(this::toDto).toList();
     }
 
     @Override
@@ -38,9 +38,10 @@ public class ToolAuthProfileServiceImpl implements ToolAuthProfileService {
     }
 
     @Override
-    public ToolAuthProfileDto create(CreateAuthProfileRequest request) {
+    public ToolAuthProfileDto create(String assistantId, CreateAuthProfileRequest request) {
         long now = Instant.now().getEpochSecond();
         ToolAuthProfile p = new ToolAuthProfile();
+        p.setAssistantId(assistantId);
         p.setName(required(request.getName()));
         p.setDescription(request.getDescription());
         p.setAuthType(request.getAuthType() == null ? "none" : request.getAuthType());

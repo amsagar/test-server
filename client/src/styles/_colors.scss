@@ -1,0 +1,83 @@
+// Warm cream canvas (kept from the Claude.ai-inspired baseline) with the
+// PODS brand red as the primary accent. Token names are kept stable so
+// existing component SCSS modules don't need to change — we just remap.
+
+// --- Core neutrals (warm cream / paper) ---
+$cream_50: #faf9f5;   // app background
+$cream_100: #f4f1e9;  // hover surfaces
+$cream_200: #ebe7d9;  // dividers / cards
+$cream_300: #d9d2bf;  // borders on focused fields
+$cream_400: #a39e8d;  // muted text
+$ink_900: #2b2a26;    // primary text
+$ink_700: #3d3929;    // headings
+$ink_500: #5c5b52;    // secondary text
+$ink_300: #87837a;    // tertiary
+
+// --- Brand accent (PODS red) ---
+// Sampled from the PODS corporate logo. Kept the legacy `$coral` token name
+// for compatibility, but the value is now PODS red.
+$pods_red: #e1251b;          // primary brand red
+$pods_red_hover: #c81b13;    // darker red on hover
+$pods_red_active: #a8170f;   // pressed
+$pods_red_dark: #8c130d;     // for high-contrast outlines / focus
+$pods_red_tint: rgba(225, 37, 27, 0.08);   // subtle background wash
+$pods_red_tint_strong: rgba(225, 37, 27, 0.16);
+
+$coral: $pods_red;
+$coral_hover: $pods_red_hover;
+$coral_active: $pods_red_active;
+$coral_tint: $pods_red_tint;
+
+// --- Soft secondary accent for assistant chips / tags ---
+$sand: #e8e4d5;
+$sand_dark: #c8c2ad;
+
+// --- Backwards-compatible token aliases used across the codebase ---
+$dark_blue: $ink_700;
+$black: $ink_900;
+$gray: $ink_500;
+$blue: $coral;
+$blue_2: $coral;
+$white: rgba(0, 0, 0, 0.06);
+$white_2: $cream_200;
+$white_3: $cream_100;
+$light_dark: $ink_700;
+$light_gray: $ink_500;
+$hover_blue: $coral_tint;
+$dark_hover_blue: $coral_hover;
+
+// --- App-specific tokens ---
+$bg_app: $cream_50;
+$bg_surface: #ffffff;
+$bg_sidebar: $cream_100;
+$bg_subtle: $cream_50;
+
+$bubble_user: $cream_200;
+$bubble_user_text: $ink_900;
+$bubble_assistant: transparent;
+$bubble_assistant_border: transparent;
+
+$tool_card_bg: $cream_100;
+$tool_card_border: $cream_200;
+$tool_card_error_border: $pods_red_hover;
+
+$danger: $pods_red_dark;
+$success: #5f8b54;
+$warning: #b58a3c;
+$info: $coral;
+$muted: $ink_300;
+$divider: $cream_200;
+$focus_ring: $coral;
+$code_bg: $cream_100;
+
+// --- Radii ---
+$radius_sm: 6px;
+$radius_md: 10px;
+$radius_lg: 16px;
+$radius_pill: 999px;
+
+// --- Fonts ---
+// Inter/system-ui — close to Claude's Söhne feel without the license.
+$font_family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
+  Arial, sans-serif;
+$font_mono: ui-monospace, 'SF Mono', 'Menlo', 'JetBrains Mono', monospace;

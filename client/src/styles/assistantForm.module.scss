@@ -1,0 +1,96 @@
+@use './colors' as *;
+
+.topGrid {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .topGrid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+.nameField,
+.toolsField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.toolChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.toolChip {
+  appearance: none;
+  border: 1px solid $cream_200;
+  background: $bg_surface;
+  color: $ink_500;
+  padding: 7px 14px 7px 10px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.toolChip:hover {
+  border-color: $cream_300;
+  background: $cream_50;
+  color: $ink_900;
+}
+
+.toolChipDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: $cream_300;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.toolChipActive {
+  border-color: $pods_red;
+  background: $pods_red_tint;
+  color: $pods_red_active;
+}
+
+.toolChipActive .toolChipDot {
+  background: $pods_red;
+  box-shadow: 0 0 0 3px $pods_red_tint;
+}
+
+.toolChipActive:hover {
+  background: $pods_red_tint_strong;
+}
+
+.promptSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.promptHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.promptCount {
+  font-size: 11px;
+  color: $muted;
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,140 @@
+@use './colors' as *;
+
+.page {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  background: $bg_app;
+  overflow: hidden;
+}
+
+.nav {
+  width: 240px;
+  flex-shrink: 0;
+  background: $bg_sidebar;
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-right: 1px solid transparent;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.navHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 18px;
+  color: $ink_500;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.navHeader:hover {
+  color: $ink_900;
+}
+
+.navTitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $muted;
+  font-weight: 600;
+  padding: 14px 12px 6px;
+}
+
+.scopePicker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 8px 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid $cream_200;
+}
+
+.scopeLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $muted;
+  font-weight: 600;
+  padding: 0 2px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: $radius_md;
+  color: $ink_700;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.navItem:hover {
+  background: $cream_200;
+  color: $ink_900;
+  text-decoration: none;
+}
+
+.navItemActive {
+  background: $bg_surface;
+  border-color: $cream_200;
+  color: $ink_900;
+  font-weight: 500;
+}
+
+.navItemActive:hover {
+  background: $bg_surface;
+}
+
+.navItemDisabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.navIcon {
+  width: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: $ink_500;
+}
+
+.navItemActive .navIcon {
+  color: $coral;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: $bg_app;
+  overflow: hidden;
+}
+
+.contentInner {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: $bg_surface;
+  margin: 24px 32px;
+  border: 1px solid $cream_200;
+  border-radius: $radius_lg;
+  box-shadow: 0 1px 3px rgba(43, 42, 38, 0.03);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

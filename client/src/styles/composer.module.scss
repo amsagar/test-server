@@ -1,0 +1,59 @@
+@use './colors' as *;
+
+.composerOuter {
+  padding: 8px 24px 24px;
+  background: linear-gradient(
+    to bottom,
+    rgba(250, 249, 245, 0) 0%,
+    $bg_app 30%
+  );
+}
+
+.composer {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 12px 12px 12px 18px;
+  background: $bg_surface;
+  border: 1px solid $cream_200;
+  border-radius: 24px;
+  box-shadow: 0 2px 12px rgba(43, 42, 38, 0.04);
+  align-items: flex-end;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.composer:focus-within {
+  border-color: $cream_300;
+  box-shadow: 0 4px 16px rgba(43, 42, 38, 0.06);
+}
+
+.input {
+  flex: 1;
+}
+
+.sendButton {
+  border-radius: 50% !important;
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  min-width: 36px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  & > span,
+  & > svg {
+    margin: 0 !important;
+  }
+}
+
+.hint {
+  display: block;
+  text-align: center;
+  color: $muted;
+  font-size: 12px;
+  margin-top: 10px;
+}

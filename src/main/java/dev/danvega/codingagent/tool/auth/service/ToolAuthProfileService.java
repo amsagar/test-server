@@ -9,11 +9,11 @@ import java.util.List;
 
 public interface ToolAuthProfileService {
 
-    List<ToolAuthProfileDto> list();
+    List<ToolAuthProfileDto> list(String assistantId);
 
     ToolAuthProfileDto get(String id);
 
-    ToolAuthProfileDto create(CreateAuthProfileRequest request);
+    ToolAuthProfileDto create(String assistantId, CreateAuthProfileRequest request);
 
     ToolAuthProfileDto update(String id, UpdateAuthProfileRequest request);
 

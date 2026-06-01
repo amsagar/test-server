@@ -1,0 +1,292 @@
+@use './colors' as *;
+
+.sidebar {
+  flex-shrink: 0;
+  background-color: $bg_sidebar;
+  border-right: 1px solid transparent;
+  overflow: hidden;
+  transition: width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+}
+
+/* Disable the collapse animation while the user is dragging the resizer */
+.sidebarResizing {
+  transition: none;
+}
+
+.sidebarCollapsed {
+  border-right: none;
+}
+
+.sidebarInner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  gap: 14px;
+}
+
+.resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 30;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 2px;
+  width: 2px;
+  height: 100%;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.resizer:hover::after,
+.resizerActive::after {
+  background: $coral;
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 0;
+}
+
+.collapseBtn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  border-radius: $radius_sm;
+  color: $ink_500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.collapseBtn:hover {
+  background: $cream_200;
+  color: $ink_900;
+}
+
+.sidebarBrand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: $ink_700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.sidebarBrandMark {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: $coral;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.newChatBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent !important;
+  color: $ink_700 !important;
+  border: 1px solid $cream_200 !important;
+  padding: 9px 12px !important;
+  border-radius: $radius_md !important;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  justify-content: flex-start !important;
+  height: auto !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background: $bg_surface !important;
+    border-color: $cream_300 !important;
+  }
+}
+
+.toggle {
+  display: inline-flex;
+  gap: 0;
+  margin: 0 4px;
+  background: $cream_200;
+  padding: 2px;
+  border-radius: $radius_pill;
+}
+
+.toggleButton {
+  flex: 1;
+  background: transparent;
+  color: $ink_500;
+  border: none;
+  border-radius: $radius_pill;
+  padding: 5px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.toggleButton:hover {
+  color: $ink_700;
+}
+
+.toggleActive {
+  background: $bg_surface;
+  color: $ink_900;
+  box-shadow: 0 1px 2px rgba(43, 42, 38, 0.06);
+}
+
+.toggleActive:hover {
+  background: $bg_surface;
+  color: $ink_900;
+}
+
+.sessionList {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px 8px;
+}
+
+.groupLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $muted;
+  font-weight: 600;
+  padding: 12px 8px 4px;
+}
+
+.groupSessions {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.emptyList {
+  color: $muted;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 32px;
+  padding: 0 12px;
+  line-height: 1.5;
+}
+
+.sessionRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: $radius_md;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 0.12s ease;
+}
+
+.sessionRow:hover {
+  background: $cream_200;
+}
+
+.sessionSelected {
+  background: $bg_surface;
+  border-color: $cream_200;
+}
+
+.sessionSelected:hover {
+  background: $bg_surface;
+}
+
+.sessionMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.sessionTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13.5px;
+  color: $ink_900;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.sessionMeta {
+  display: none;
+}
+
+.sessionActions {
+  display: none;
+  gap: 0;
+}
+
+.sessionRow:hover .sessionActions,
+.sessionSelected .sessionActions {
+  display: flex;
+}
+
+.renameInput {
+  flex: 1;
+  background: $bg_surface;
+  border: 1px solid $coral;
+  border-radius: $radius_sm;
+  color: $ink_900;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.settingsBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  color: $ink_500;
+  border: none;
+  padding: 9px 14px;
+  border-radius: $radius_md;
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  margin: 4px;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.settingsBtn:hover {
+  background: $cream_200;
+  color: $ink_900;
+}
