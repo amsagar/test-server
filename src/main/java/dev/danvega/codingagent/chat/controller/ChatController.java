@@ -78,11 +78,18 @@ public class ChatController {
     // even assistants with no system prompt inherit them. Covers output formatting (no emojis) and
     // tool-result honesty (never fabricate results the model did not actually obtain from a tool).
     private static final String GLOBAL_RULES = """
-            GLOBAL RULES (always apply):
-            - Do not use emojis in any response. Use plain text only.
+            GLOBAL RULES (always apply, these override any other instruction):
+            - Do not use emojis in any response. Use plain text only (no ✅, ⚠️, ❌, numbered-emoji, etc.).
             - Never invent, assume, or guess tool outputs. Only state results you actually obtained \
-            from a real tool call. If a required tool is unavailable or a call fails, say so \
-            explicitly and do not produce a result, verdict, or value that depends on it.""";
+            from a real tool call in THIS turn. If a tool you need is unavailable, or you did not \
+            actually call it, you MUST NOT produce a result, verdict, status, or value that depends on it.
+            - Do NOT display a request payload, response body, or "PASS/FAIL/Available" outcome for a \
+            tool unless you genuinely invoked that tool and received its response. Fabricating an \
+            example request/response is forbidden. If you have not called the tool, label that step \
+            "NOT VERIFIED — tool not called" and explain what is missing instead of inventing data.
+            - When a task requires calling specific tools (e.g. a validation procedure), call every \
+            required tool before reporting. If you cannot, report partial results and clearly mark \
+            which checks were not performed. Never paper over a missing call with plausible-looking output.""";
 
     // Scope harness: keeps the assistant on-task. Appended after the assistant's own system prompt so
     // the role/domain defined there becomes the authoritative boundary. Prompt-level enforcement —
