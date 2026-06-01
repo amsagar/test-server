@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
+import MarkdownContent from '@molecules/MarkdownContent';
 import type { UiChatMessage } from '@interfaces/chat.interface';
 import * as styles from '@styles/chatThread.module.scss';
 
@@ -21,7 +21,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       {isUser ? (
         message.content
       ) : message.content ? (
-        <ReactMarkdown>{message.content}</ReactMarkdown>
+        <MarkdownContent source={message.content} />
       ) : showTypingDots ? (
         <span className={styles.typing} aria-live="polite" aria-label="Thinking">
           <span className={styles.typingShimmer}>Thinking</span>

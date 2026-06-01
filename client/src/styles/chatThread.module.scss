@@ -87,89 +87,10 @@
   font-size: 15px;
 }
 
-/* Assistant: no bubble — flat prose flows in the column */
+/* Assistant: flat column; typography via MarkdownContent */
 .bubbleAssistant {
   width: 100%;
-  color: $ink_900;
-  font-size: 15.5px;
-  line-height: 1.7;
-  word-wrap: break-word;
-}
-
-.bubbleAssistant :is(p, ul, ol):first-child {
-  margin-top: 0;
-}
-
-.bubbleAssistant :is(p, ul, ol):last-child {
-  margin-bottom: 0;
-}
-
-.bubbleAssistant p {
-  margin: 0 0 12px;
-}
-
-.bubbleAssistant h1,
-.bubbleAssistant h2,
-.bubbleAssistant h3 {
-  color: $ink_700;
-  letter-spacing: -0.01em;
-  margin: 20px 0 10px;
-}
-
-.bubbleAssistant ul,
-.bubbleAssistant ol {
-  padding-left: 22px;
-  margin: 6px 0 12px;
-}
-
-.bubbleAssistant li {
-  margin: 4px 0;
-}
-
-.bubbleAssistant pre {
-  background: $cream_100;
-  border: 1px solid $cream_200;
-  border-radius: $radius_md;
-  padding: 14px 16px;
-  overflow-x: auto;
-  font-family: $font_mono;
-  font-size: 13px;
-  line-height: 1.55;
-  margin: 12px 0;
-}
-
-.bubbleAssistant code {
-  font-family: $font_mono;
-  font-size: 13px;
-  background: $cream_100;
-  border: 1px solid $cream_200;
-  padding: 1px 6px;
-  border-radius: 4px;
-}
-
-.bubbleAssistant pre code {
-  background: transparent;
-  border: none;
-  padding: 0;
-  border-radius: 0;
-}
-
-.bubbleAssistant a {
-  color: $coral;
-  border-bottom: 1px solid $pods_red_tint_strong;
-}
-
-.bubbleAssistant a:hover {
-  text-decoration: none;
-  border-bottom-color: $coral;
-}
-
-.bubbleAssistant blockquote {
-  border-left: 3px solid $cream_300;
-  margin: 12px 0;
-  padding: 4px 0 4px 14px;
-  color: $ink_500;
-  font-style: italic;
+  min-width: 0;
 }
 
 .typing {

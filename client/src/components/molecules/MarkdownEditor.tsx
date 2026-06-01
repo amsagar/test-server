@@ -1,20 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import React, { useState } from 'react';
 import CustomTextarea from '@atoms/CustomTextarea';
+import MarkdownContent from '@molecules/MarkdownContent';
 import * as styles from '@styles/markdownEditor.module.scss';
-
-/**
- * Pre-process source so the preview renders the way authors expect:
- *  - Convert Unicode bullets/middots (•, ·, ●, ‣) that appear after
- *    leading whitespace into standard markdown list dashes, so nested lists
- *    are recognised by remark instead of being absorbed into the parent
- *    list item as inline text.
- *  - Collapse Windows-style CRLF.
- */
-const normalizeMarkdown = (input: string): string =>
-  input
-    .replace(/\r\n?/g, '\n')
-    .replace(/^([ \t]*)[•·●‣]\s+/gm, '$1- ');
 
 export interface MarkdownEditorProps {
   value: string;
@@ -42,7 +29,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   ariaLabel,
 }) => {
   const [mode, setMode] = useState<Mode>('edit');
-  const previewSource = useMemo(() => normalizeMarkdown(value), [value]);
 
   return (
     <div className={[styles.wrap, className].filter(Boolean).join(' ')}>
@@ -83,7 +69,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         />
       ) : value.trim() ? (
         <div className={styles.preview}>
-          <ReactMarkdown>{previewSource}</ReactMarkdown>
+          <MarkdownContent source={value} />
         </div>
       ) : (
         <div className={styles.previewEmpty}>Nothing to preview yet.</div>

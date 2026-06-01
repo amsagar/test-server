@@ -1,12 +1,56 @@
 import React, { useState } from 'react';
 import CustomIcon from '@atoms/CustomIcon';
+import MarkdownContent from '@molecules/MarkdownContent';
 import { formatJson } from '@utils/formatJson';
+import { isJsonPayload } from '@utils/isJsonPayload';
 import type { UiToolCall } from '@interfaces/chat.interface';
 import * as styles from '@styles/toolEventCard.module.scss';
 
 export interface ToolEventCardProps {
   tool: UiToolCall;
 }
+
+const PayloadBlock: React.FC<{
+  label: string;
+  raw: string | null;
+  running?: boolean;
+}> = ({ label, raw, running }) => {
+  if (running) {
+    return (
+      <>
+        <div className={styles.label}>{label}</div>
+        <div className={styles.running}>Running…</div>
+      </>
+    );
+  }
+
+  if (!raw?.trim()) {
+    return (
+      <>
+        <div className={styles.label}>{label}</div>
+        <div className={styles.empty}>—</div>
+      </>
+    );
+  }
+
+  if (isJsonPayload(raw)) {
+    return (
+      <>
+        <div className={styles.label}>{label}</div>
+        <pre className={styles.pre}>{formatJson(raw)}</pre>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className={styles.label}>{label}</div>
+      <div className={styles.md}>
+        <MarkdownContent source={raw} compact />
+      </div>
+    </>
+  );
+};
 
 const ToolEventCard: React.FC<ToolEventCardProps> = ({ tool }) => {
   const [open, setOpen] = useState(false);
@@ -30,12 +74,12 @@ const ToolEventCard: React.FC<ToolEventCardProps> = ({ tool }) => {
       </div>
       {open && (
         <div className={styles.body}>
-          <div className={styles.label}>Input</div>
-          <pre className={styles.pre}>{formatJson(tool.input)}</pre>
-          <div className={styles.label}>Output</div>
-          <pre className={styles.pre}>
-            {tool.running ? 'Running...' : formatJson(tool.output)}
-          </pre>
+          <PayloadBlock label="Input" raw={tool.input} />
+          <PayloadBlock
+            label="Output"
+            raw={tool.output}
+            running={tool.running}
+          />
         </div>
       )}
     </div>
