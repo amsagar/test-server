@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -349,8 +350,17 @@ public class ChatController {
                     .build());
             skillTools.addAll(List.of(ToolCallbacks.from(FileSystemTools.builder().build())));
             skillTools.addAll(List.of(ToolCallbacks.from(ShellTools.builder().build())));
+            // De-dupe by tool name: the file-system/shell tools the skills need (Read, Write, Edit,
+            // Bash, …) may already be present as built-in tools for this assistant. Spring AI rejects
+            // a request with two tools of the same name, so only add skill tools whose name isn't
+            // already in the outgoing set.
+            Set<String> existingNames = toolsToSend.stream()
+                    .map(cb -> cb.getToolDefinition().name())
+                    .collect(java.util.stream.Collectors.toCollection(java.util.HashSet::new));
             for (ToolCallback cb : skillTools) {
-                toolsToSend.add(new EventEmittingToolCallback(cb, toolEventRegistry));
+                if (existingNames.add(cb.getToolDefinition().name())) {
+                    toolsToSend.add(new EventEmittingToolCallback(cb, toolEventRegistry));
+                }
             }
         }
 
