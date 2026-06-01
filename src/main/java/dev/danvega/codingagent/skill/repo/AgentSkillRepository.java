@@ -55,7 +55,7 @@ public class AgentSkillRepository {
 
     public int update(AgentSkill s, long now) {
         return jdbcTemplate.update(sqlQueryLoader.getQuery("SKILL.UPDATE"),
-                s.getName(), s.getDescription(), s.isEnabled(), now, s.getId());
+                s.getName(), s.getDescription(), s.getBlobPrefix(), s.isEnabled(), now, s.getId());
     }
 
     public int delete(String id) {

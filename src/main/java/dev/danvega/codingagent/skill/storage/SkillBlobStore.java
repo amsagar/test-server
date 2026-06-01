@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -82,10 +83,22 @@ public class SkillBlobStore {
         return container().getBlobClient(blobName).downloadContent().toBytes();
     }
 
-    /** Deletes every blob under the given prefix (e.g. "<skillId>/"). */
+    /**
+     * Deletes every blob under the given prefix (e.g. "<skillId>/"). Names are deleted
+     * deepest-first (reverse-sorted) so that on hierarchical-namespace (ADLS Gen2) accounts a
+     * directory marker is removed only after the files inside it — otherwise Azure rejects the
+     * directory delete with 409 DirectoryIsNotEmpty. Each delete is best-effort: a failure on one
+     * blob is logged and skipped rather than aborting the whole cleanup.
+     */
     public void deletePrefix(String prefix) {
-        for (String name : list(prefix)) {
-            container().getBlobClient(name).deleteIfExists();
+        List<String> names = list(prefix);
+        names.sort(Comparator.reverseOrder());
+        for (String name : names) {
+            try {
+                container().getBlobClient(name).deleteIfExists();
+            } catch (RuntimeException e) {
+                log.warn("Failed to delete blob {}: {}", name, e.getMessage());
+            }
         }
     }
 }

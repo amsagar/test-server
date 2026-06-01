@@ -81,8 +81,21 @@ public class SkillServiceImpl implements SkillService {
         if (file != null && !file.isEmpty()) {
             requireBlob();
             ParsedSkill parsed = parse(file);
-            blobStore.deletePrefix(existing.getBlobPrefix());
-            uploadAll(existing.getBlobPrefix(), parsed.files());
+            // Write the new bundle under a fresh prefix instead of re-uploading into the existing
+            // one. On hierarchical-namespace (ADLS Gen2) accounts, deleting then re-uploading into
+            // the same prefix fails with 409 DirectoryIsNotEmpty because empty directory markers
+            // survive the per-blob delete. A clean prefix never collides; the old one is pruned
+            // best-effort afterwards so a stubborn marker can't abort the upload.
+            String oldPrefix = existing.getBlobPrefix();
+            String newPrefix = UUID.randomUUID() + "/";
+            uploadAll(newPrefix, parsed.files());
+            existing.setBlobPrefix(newPrefix);
+            try {
+                blobStore.deletePrefix(oldPrefix);
+            } catch (RuntimeException e) {
+                log.warn("Uploaded skill {} to new prefix {} but failed to remove old blobs under {}: {}",
+                        id, newPrefix, oldPrefix, e.getMessage());
+            }
             // The manifest is the source of truth; refresh metadata from frontmatter on re-upload
             // unless the request explicitly overrides it below.
             if (parsed.name() != null && !parsed.name().isBlank()) {
