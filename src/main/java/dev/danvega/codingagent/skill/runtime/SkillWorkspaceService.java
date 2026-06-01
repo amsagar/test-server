@@ -59,9 +59,17 @@ public class SkillWorkspaceService {
             String prefix = skill.getBlobPrefix();
             Path skillRoot = workspace.resolve(skill.getId());
             try {
-                for (String blobName : blobStore.list(prefix)) {
+                List<String> blobNames = blobStore.list(prefix);
+                for (String blobName : blobNames) {
                     String relative = blobName.substring(prefix.length());
                     if (relative.isBlank()) {
+                        continue;
+                    }
+                    // Skip directory-marker blobs. On hierarchical-namespace (ADLS Gen2) accounts
+                    // Azure auto-creates a zero-byte object for each parent folder (e.g. "references"
+                    // alongside "references/field-mappings.md"). Writing it as a file would then
+                    // collide with creating the real subdirectory and abort the whole skill.
+                    if (relative.endsWith("/") || isDirectoryMarker(blobName, blobNames)) {
                         continue;
                     }
                     Path target = skillRoot.resolve(relative).normalize();
@@ -84,6 +92,20 @@ public class SkillWorkspaceService {
         }
         log.debug("Materialized {} skill(s) for assistant {} into {}", materialized, assistantId, workspace);
         return workspace;
+    }
+
+    /**
+     * True when {@code blobName} is a folder placeholder — i.e. some other blob in the listing is
+     * nested under it ({@code blobName + "/..."}). Such markers must not be written as files.
+     */
+    private static boolean isDirectoryMarker(String blobName, List<String> allNames) {
+        String childPrefix = blobName + "/";
+        for (String other : allNames) {
+            if (other.startsWith(childPrefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Recursively deletes the workspace; safe to call with {@code null}. */
