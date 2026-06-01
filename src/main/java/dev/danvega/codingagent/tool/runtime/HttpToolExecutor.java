@@ -4,14 +4,21 @@ import tools.jackson.databind.ObjectMapper;
 import dev.danvega.codingagent.tool.auth.service.HttpToolAuthService;
 import dev.danvega.codingagent.tool.entity.AgentTool;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,13 +34,28 @@ public class HttpToolExecutor {
 
     private static final Pattern PATH_PARAM = Pattern.compile("\\{([^}/]+)}");
 
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final HttpToolAuthService authService;
+    private final int maxAttempts;
+    private final long retryBackoffMs;
 
-    public HttpToolExecutor(ObjectMapper objectMapper, HttpToolAuthService authService) {
+    public HttpToolExecutor(
+            ObjectMapper objectMapper,
+            HttpToolAuthService authService,
+            @Value("${agent.http-tool.connect-timeout-ms:15000}") long connectTimeoutMs,
+            @Value("${agent.http-tool.read-timeout-ms:120000}") long readTimeoutMs,
+            @Value("${agent.http-tool.max-attempts:3}") int maxAttempts,
+            @Value("${agent.http-tool.retry-backoff-ms:1000}") long retryBackoffMs) {
         this.objectMapper = objectMapper;
         this.authService = authService;
+        this.maxAttempts = Math.max(1, maxAttempts);
+        this.retryBackoffMs = Math.max(0, retryBackoffMs);
+
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofMillis(connectTimeoutMs));
+        factory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
+        this.restClient = RestClient.builder().requestFactory(factory).build();
     }
 
     public String execute(AgentTool tool, String jsonInput) {
@@ -56,24 +78,74 @@ public class HttpToolExecutor {
         if (!hasBody) {
             remaining.forEach((k, v) -> uri.queryParam(k, String.valueOf(v)));
         }
+        var targetUri = uri.build(true).toUri();
 
-        RestClient.RequestBodySpec spec = restClient.method(method)
-                .uri(uri.build(true).toUri())
-                .headers(h -> authHeaders.forEach(h::set));
+        String bodyJson = null;
+        if (hasBody && !remaining.isEmpty()) {
+            try {
+                bodyJson = objectMapper.writeValueAsString(remaining);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to serialize request body: " + e.getMessage(), e);
+            }
+        }
+        final String body = bodyJson;
 
-        try {
+        return sendWithRetry(tool.getName(), () -> {
+            RestClient.RequestBodySpec spec = restClient.method(method)
+                    .uri(targetUri)
+                    .headers(h -> authHeaders.forEach(h::set));
             String response;
-            if (hasBody && !remaining.isEmpty()) {
-                spec.header(HttpHeaders.CONTENT_TYPE, "application/json");
-                response = spec.body(objectMapper.writeValueAsString(remaining))
+            if (body != null) {
+                response = spec.header(HttpHeaders.CONTENT_TYPE, "application/json")
+                        .body(body)
                         .retrieve().body(String.class);
             } else {
                 response = spec.retrieve().body(String.class);
             }
             return response == null ? "" : response;
-        } catch (Exception e) {
-            log.warn("HTTP tool '{}' call failed: {}", tool.getName(), e.getMessage());
-            throw new RuntimeException("HTTP request failed: " + e.getMessage(), e);
+        });
+    }
+
+    /**
+     * Runs the HTTP call, retrying on transient failures — I/O errors (timeouts,
+     * connection resets) and 5xx server errors — up to {@code maxAttempts} with a
+     * linear backoff. 4xx client errors (e.g. 401/403) are not transient and fail
+     * fast so the model sees the real cause immediately.
+     */
+    private String sendWithRetry(String toolName, Supplier<String> call) {
+        Exception lastTransient = null;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                return call.get();
+            } catch (HttpClientErrorException e) {
+                log.warn("HTTP tool '{}' call failed: {}", toolName, e.getMessage());
+                throw new RuntimeException("HTTP request failed: " + e.getMessage(), e);
+            } catch (ResourceAccessException | HttpServerErrorException e) {
+                lastTransient = e;
+                log.warn("HTTP tool '{}' attempt {}/{} failed (transient): {}",
+                        toolName, attempt, maxAttempts, e.getMessage());
+                if (attempt < maxAttempts) {
+                    sleepQuietly(retryBackoffMs * attempt);
+                }
+            } catch (Exception e) {
+                log.warn("HTTP tool '{}' call failed: {}", toolName, e.getMessage());
+                throw new RuntimeException("HTTP request failed: " + e.getMessage(), e);
+            }
+        }
+        String message = lastTransient == null ? "unknown error" : lastTransient.getMessage();
+        log.warn("HTTP tool '{}' failed after {} attempts: {}", toolName, maxAttempts, message);
+        throw new RuntimeException(
+                "HTTP request failed after " + maxAttempts + " attempts: " + message, lastTransient);
+    }
+
+    private static void sleepQuietly(long millis) {
+        if (millis <= 0) {
+            return;
+        }
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
     }
 

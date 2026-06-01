@@ -65,3 +65,11 @@ agent:
   # messages are blocked with a short redirect instead of reaching the main model. See ScopeGuardService.
   scope-guard:
     enabled: true
+  # Outbound HTTP tool calls (and OAuth token fetches). Timeouts are generous because tool
+  # backends can be slow; transient failures (timeouts, connection resets, 5xx) are retried with
+  # a linear backoff. 4xx client errors are not retried. See HttpToolExecutor / HttpToolAuthService.
+  http-tool:
+    connect-timeout-ms: 15000
+    read-timeout-ms: 120000
+    max-attempts: 3
+    retry-backoff-ms: 1000

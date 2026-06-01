@@ -5,14 +5,17 @@ import dev.danvega.codingagent.tool.auth.entity.ToolAuthProfile;
 import dev.danvega.codingagent.tool.auth.repo.ToolAuthProfileRepository;
 import dev.danvega.codingagent.tool.entity.AgentTool;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -39,14 +42,21 @@ public class HttpToolAuthService {
     private final ToolAuthProfileRepository profileRepository;
     private final EncryptionService encryptionService;
     private final ObjectMapper objectMapper;
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient;
 
     public HttpToolAuthService(ToolAuthProfileRepository profileRepository,
                                EncryptionService encryptionService,
-                               ObjectMapper objectMapper) {
+                               ObjectMapper objectMapper,
+                               @Value("${agent.http-tool.connect-timeout-ms:15000}") long connectTimeoutMs,
+                               @Value("${agent.http-tool.read-timeout-ms:120000}") long readTimeoutMs) {
         this.profileRepository = profileRepository;
         this.encryptionService = encryptionService;
         this.objectMapper = objectMapper;
+
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofMillis(connectTimeoutMs));
+        factory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
+        this.restClient = RestClient.builder().requestFactory(factory).build();
     }
 
     public ResolvedAuth resolve(AgentTool tool) {
