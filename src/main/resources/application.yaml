@@ -7,13 +7,14 @@ spring:
       max-request-size: 25MB
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/codingagent
-    username: postgres
-    password: ivoyant
+    url: jdbc:postgresql://psql-server-eus-ivoyant-global-spoke-nprd.postgres.database.azure.com:5432/pods_ai_agent?sslmode=require&tcpKeepAlive=true&connectTimeout=10&socketTimeout=60
+    username: psqladminuser
+    password: pU9_hvM2XRyDHTVRdeAd
   sql:
     init:
       mode: always
       schema-locations:
+        - classpath:sql-models/vector-store-model.sql
         - classpath:sql-models/chat-session-model.sql
         - classpath:sql-models/assistant-model.sql
         - classpath:sql-models/agent-tool-model.sql
@@ -41,8 +42,12 @@ spring:
             initialize-schema: always
     vectorstore:
       pgvector:
-        # Spring AI manages the vector_store table that holds per-assistant RAG chunks.
-        initialize-schema: true
+        # We create the vector_store table ourselves via spring.sql.init
+        # (classpath:sql-models/vector-store-model.sql) using only the allow-listed `vector`
+        # extension. Spring AI's own init is left off because it also runs `CREATE EXTENSION hstore`,
+        # which Azure Database for PostgreSQL rejects unless hstore is allow-listed via the
+        # `azure.extensions` server parameter (hstore is never used at runtime — metadata is JSON).
+        initialize-schema: false
         # text-embedding-3-large yields 3072-dim vectors; pgvector's hnsw/ivfflat ANN indexes
         # cap at 2000 dims, so we run with no vector index (sequential scan + metadata filter).
         index-type: NONE
