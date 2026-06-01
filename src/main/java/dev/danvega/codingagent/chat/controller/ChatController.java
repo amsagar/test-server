@@ -74,6 +74,16 @@ public class ChatController {
             chosen tool's exact `name` and an `input` object matching that tool's schema. Search again \
             with a different query if the first results are not relevant.""";
 
+    // Global rules applied to EVERY agent, regardless of role/prompt. Injected unconditionally so
+    // even assistants with no system prompt inherit them. Covers output formatting (no emojis) and
+    // tool-result honesty (never fabricate results the model did not actually obtain from a tool).
+    private static final String GLOBAL_RULES = """
+            GLOBAL RULES (always apply):
+            - Do not use emojis in any response. Use plain text only.
+            - Never invent, assume, or guess tool outputs. Only state results you actually obtained \
+            from a real tool call. If a required tool is unavailable or a call fails, say so \
+            explicitly and do not produce a result, verdict, or value that depends on it.""";
+
     // Scope harness: keeps the assistant on-task. Appended after the assistant's own system prompt so
     // the role/domain defined there becomes the authoritative boundary. Prompt-level enforcement —
     // it constrains the model strongly but is not a hard sandbox.
@@ -288,6 +298,9 @@ public class ChatController {
                     + "RESPONSE STYLE — follow these formatting/tone instructions for your reply:\n"
                     + styleInstructions;
         }
+        // Global rules apply to every agent (even those with no role prompt), so inject them
+        // unconditionally into the base prompt before the tool hint and scope guardrail.
+        basePrompt = (basePrompt.isBlank() ? "" : basePrompt + "\n\n") + GLOBAL_RULES;
 
         boolean searchMode = toolCallbacks.size() > toolSearchThreshold;
         List<ToolCallback> toolsToSend;
