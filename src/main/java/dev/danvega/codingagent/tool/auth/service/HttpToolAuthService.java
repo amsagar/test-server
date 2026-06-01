@@ -47,8 +47,8 @@ public class HttpToolAuthService {
     public HttpToolAuthService(ToolAuthProfileRepository profileRepository,
                                EncryptionService encryptionService,
                                ObjectMapper objectMapper,
-                               @Value("${agent.http-tool.connect-timeout-ms:15000}") long connectTimeoutMs,
-                               @Value("${agent.http-tool.read-timeout-ms:120000}") long readTimeoutMs) {
+                               @Value("${agent.http-tool.connect-timeout-ms:10000}") long connectTimeoutMs,
+                               @Value("${agent.http-tool.read-timeout-ms:30000}") long readTimeoutMs) {
         this.profileRepository = profileRepository;
         this.encryptionService = encryptionService;
         this.objectMapper = objectMapper;

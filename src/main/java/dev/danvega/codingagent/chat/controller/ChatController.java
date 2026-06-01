@@ -20,6 +20,7 @@ import dev.danvega.codingagent.mcp.runtime.McpToolCallbackFactory;
 import dev.danvega.codingagent.skill.runtime.SkillWorkspaceService;
 import dev.danvega.codingagent.style.service.ResponseStyleService;
 import dev.danvega.codingagent.tool.runtime.HttpToolCallbackFactory;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springaicommunity.agent.tools.FileSystemTools;
@@ -170,7 +171,15 @@ public class ChatController {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<Object>> stream(@RequestParam String sessionId,
                                                 @RequestParam String message,
-                                                @RequestParam(required = false) String styleId) {
+                                                @RequestParam(required = false) String styleId,
+                                                HttpServletResponse response) {
+        // Keep the SSE stream un-buffered end to end. `no-transform` tells any compression layer
+        // (the webpack dev-server proxy, nginx/CDN in prod) NOT to gzip the response — gzip buffers
+        // tiny token events and flushes them in one lump, which makes streaming look frozen on
+        // "Thinking…" until the turn ends. `X-Accel-Buffering: no` disables nginx proxy buffering.
+        response.setHeader("Cache-Control", "no-cache, no-transform");
+        response.setHeader("X-Accel-Buffering", "no");
+
         chatSessionService.touchAndMaybeTitle(sessionId, message);
 
         String assistantId = chatSessionService.resolveAssistantId(sessionId);

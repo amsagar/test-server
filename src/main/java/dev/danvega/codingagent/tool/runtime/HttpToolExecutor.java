@@ -43,9 +43,9 @@ public class HttpToolExecutor {
     public HttpToolExecutor(
             ObjectMapper objectMapper,
             HttpToolAuthService authService,
-            @Value("${agent.http-tool.connect-timeout-ms:15000}") long connectTimeoutMs,
-            @Value("${agent.http-tool.read-timeout-ms:120000}") long readTimeoutMs,
-            @Value("${agent.http-tool.max-attempts:3}") int maxAttempts,
+            @Value("${agent.http-tool.connect-timeout-ms:10000}") long connectTimeoutMs,
+            @Value("${agent.http-tool.read-timeout-ms:30000}") long readTimeoutMs,
+            @Value("${agent.http-tool.max-attempts:2}") int maxAttempts,
             @Value("${agent.http-tool.retry-backoff-ms:1000}") long retryBackoffMs) {
         this.objectMapper = objectMapper;
         this.authService = authService;
