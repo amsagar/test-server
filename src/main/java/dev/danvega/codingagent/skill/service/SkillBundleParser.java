@@ -114,6 +114,14 @@ public class SkillBundleParser {
                 || base.startsWith("._");
     }
 
+    /** Parsed YAML frontmatter fields from a SKILL.md body. */
+    public record SkillFrontmatter(String name, String description) {}
+
+    public SkillFrontmatter readFrontmatter(String markdown) {
+        Frontmatter fm = parseFrontmatter(markdown);
+        return new SkillFrontmatter(fm.name, fm.description);
+    }
+
     private record Frontmatter(String name, String description) {}
 
     private Frontmatter parseFrontmatter(String markdown) {

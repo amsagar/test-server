@@ -17,6 +17,10 @@ interface SettingsScopeValue {
   setAssistantId: (id: string) => void;
   refreshAssistants: () => Promise<void>;
   loading: boolean;
+  /** True while composing a brand-new assistant (before first save). */
+  creatingAssistant: boolean;
+  startCreateAssistant: () => void;
+  cancelCreateAssistant: () => void;
 }
 
 const SettingsScopeContext = createContext<SettingsScopeValue | null>(null);
@@ -36,9 +40,11 @@ export const SettingsScopeProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   });
   const [loading, setLoading] = useState(true);
+  const [creatingAssistant, setCreatingAssistant] = useState(false);
 
   const setAssistantId = useCallback((id: string) => {
     setAssistantIdState(id);
+    setCreatingAssistant(false);
     try {
       window.localStorage.setItem(STORAGE_KEY, id);
     } catch {
@@ -46,15 +52,34 @@ export const SettingsScopeProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
+  const startCreateAssistant = useCallback(() => {
+    setCreatingAssistant(true);
+    setAssistantIdState('');
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const cancelCreateAssistant = useCallback(() => {
+    setCreatingAssistant(false);
+    setAssistantIdState((curr) => {
+      if (curr) return curr;
+      return '';
+    });
+  }, []);
+
   const refreshAssistants = useCallback(async () => {
     try {
       const list = await assistantsApi.list();
       setAssistants(list);
-      setAssistantIdState((curr) =>
-        curr && list.some((a) => a.id === curr)
+      setAssistantIdState((curr) => {
+        if (creatingAssistant) return curr;
+        return curr && list.some((a) => a.id === curr)
           ? curr
-          : list[0]?.id || ''
-      );
+          : list[0]?.id || '';
+      });
     } catch (e) {
       openNotification(
         (e as Error)?.message || 'Failed to load assistants',
@@ -63,7 +88,13 @@ export const SettingsScopeProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  }, [openNotification]);
+  }, [openNotification, creatingAssistant]);
+
+  useEffect(() => {
+    if (!creatingAssistant && !assistantId && assistants.length > 0) {
+      setAssistantId(assistants[0].id);
+    }
+  }, [creatingAssistant, assistantId, assistants, setAssistantId]);
 
   useEffect(() => {
     void refreshAssistants();
@@ -77,8 +108,20 @@ export const SettingsScopeProvider: React.FC<{ children: React.ReactNode }> = ({
       setAssistantId,
       refreshAssistants,
       loading,
+      creatingAssistant,
+      startCreateAssistant,
+      cancelCreateAssistant,
     }),
-    [assistants, assistantId, setAssistantId, refreshAssistants, loading]
+    [
+      assistants,
+      assistantId,
+      setAssistantId,
+      refreshAssistants,
+      loading,
+      creatingAssistant,
+      startCreateAssistant,
+      cancelCreateAssistant,
+    ]
   );
 
   return (

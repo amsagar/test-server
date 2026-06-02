@@ -6,20 +6,23 @@ import * as styles from '@styles/composer.module.scss';
 
 export interface ComposerProps {
   streaming: boolean;
+  disabled?: boolean;
   onSend: (text: string) => void;
   placeholder?: string;
 }
 
 const Composer: React.FC<ComposerProps> = ({
   streaming,
+  disabled,
   onSend,
   placeholder = 'Send a message…',
 }) => {
   const [value, setValue] = useState('');
+  const blocked = streaming || disabled;
 
   const submit = () => {
     const text = value.trim();
-    if (!text || streaming) return;
+    if (!text || blocked) return;
     setValue('');
     onSend(text);
   };
@@ -41,11 +44,12 @@ const Composer: React.FC<ComposerProps> = ({
           autoSize={{ minRows: 1, maxRows: 8 }}
           variant="borderless"
           fullWidth
+          disabled={blocked}
         />
         <CustomButton
           variant="primary"
           onClick={submit}
-          disabled={streaming || !value.trim()}
+          disabled={blocked || !value.trim()}
           className={styles.sendButton}
           aria-label="Send"
         >

@@ -1,32 +1,48 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import ResourcePanelTemplate from '@templates/ResourcePanelTemplate';
-import FormTemplate from '@templates/FormTemplate';
+import React, { useCallback, useEffect, useState } from 'react';
+import type { TableColumnsType } from 'antd';
+import CustomTable from '@templates/CustomTable';
 import CustomInput from '@atoms/CustomInput';
 import CustomButton from '@atoms/CustomButton';
+import CustomDropdown from '@atoms/CustomDropdown';
+import CustomIcon from '@atoms/CustomIcon';
+import CustomModal from '@atoms/CustomModal';
+import CustomSwitch from '@atoms/CustomSwitch';
 import CustomFileUpload from '@atoms/CustomFileUpload';
-import CustomTag from '@atoms/CustomTag';
+import CustomEmptyState from '@atoms/CustomEmptyState';
+import { confirm } from '@atoms/CustomConfirm';
 import { useSettingsScope } from '@providers/SettingsScopeProvider';
 import { documentsApi } from '@apiCalls/services';
 import { useNotification } from '@providers/NotificationProviders';
+import { relativeTime } from '@utils/relativeTime';
 import type { DocumentDto } from '@interfaces/document.interface';
-import * as styles from '@styles/resourcePanel.module.scss';
+import * as styles from '@styles/documentsPage.module.scss';
+
+const fileExtension = (name: string): string => {
+  const dot = name.lastIndexOf('.');
+  if (dot <= 0 || dot === name.length - 1) return 'file';
+  return name.slice(dot + 1).toLowerCase();
+};
 
 const DocumentsPage: React.FC = () => {
   const openNotification = useNotification();
   const { assistant, assistantId } = useSettingsScope();
   const [items, setItems] = useState<DocumentDto[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formName, setFormName] = useState('');
-  const [formEnabled, setFormEnabled] = useState(true);
-  const [newFile, setNewFile] = useState<File | null>(null);
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<DocumentDto | null>(null);
+  const [editName, setEditName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (!assistantId) {
       setItems([]);
       return;
     }
+    setLoading(true);
     try {
       setItems(await documentsApi.list(assistantId));
     } catch (e) {
@@ -34,180 +50,335 @@ const DocumentsPage: React.FC = () => {
         (e as Error)?.message || 'Failed to load documents',
         'Error'
       );
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [assistantId, openNotification]);
 
   useEffect(() => {
     void refresh();
-    setEditingId(null);
-  }, [assistantId]);
+  }, [assistantId, refresh]);
 
-  const startNew = () => {
+  const openUpload = () => {
     if (!assistantId) {
       openNotification('Pick an assistant first', 'Warning');
       return;
     }
-    setEditingId('new');
-    setNewFile(null);
-    setFormName('');
-    setFormEnabled(true);
-    setError('');
+    setUploadFile(null);
+    setUploadOpen(true);
   };
 
-  const startEdit = (d: DocumentDto) => {
-    setEditingId(d.id);
-    setFormName(d.name);
-    setFormEnabled(d.enabled);
-    setNewFile(null);
-    setError('');
-  };
-
-  const cancel = () => {
-    setEditingId(null);
-    setError('');
-    setNewFile(null);
-  };
-
-  const save = async () => {
-    if (editingId === 'new') {
-      if (!newFile) {
-        setError('Pick a file to upload.');
-        return;
-      }
-      setSaving(true);
-      try {
-        const created = await documentsApi.upload(assistantId, newFile);
-        openNotification(`Document "${created.name}" uploaded`, 'Success');
-        cancel();
-        await refresh();
-      } catch (e) {
-        setError((e as Error)?.message || 'Failed to upload document');
-      } finally {
-        setSaving(false);
-      }
-      return;
+  const submitUpload = async () => {
+    if (!uploadFile || !assistantId) return;
+    setUploading(true);
+    try {
+      const created = await documentsApi.upload(assistantId, uploadFile);
+      await refresh();
+      setUploadOpen(false);
+      setUploadFile(null);
+      openNotification(`Document "${created.name}" uploaded`, 'Success');
+    } catch (e) {
+      openNotification(
+        (e as Error)?.message || 'Failed to upload document',
+        'Error'
+      );
+    } finally {
+      setUploading(false);
     }
-    if (!editingId) return;
-    if (!formName.trim()) {
-      setError('Name is required.');
-      return;
-    }
+  };
+
+  const openEdit = (doc: DocumentDto) => {
+    setEditingDoc(doc);
+    setEditName(doc.name);
+    setEditOpen(true);
+  };
+
+  const saveEdit = async () => {
+    if (!editingDoc || !editName.trim()) return;
     setSaving(true);
     try {
-      const updated = await documentsApi.update(editingId, {
-        name: formName.trim(),
-        enabled: formEnabled,
+      await documentsApi.update(editingDoc.id, {
+        name: editName.trim(),
+        enabled: editingDoc.enabled,
       });
-      openNotification(`Document "${updated.name}" updated`, 'Success');
-      cancel();
       await refresh();
+      setEditOpen(false);
+      setEditingDoc(null);
+      openNotification('Document updated', 'Success');
     } catch (e) {
-      setError((e as Error)?.message || 'Failed to save document');
+      openNotification(
+        (e as Error)?.message || 'Failed to update document',
+        'Error'
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const remove = async (d: DocumentDto) => {
+  const toggleEnabled = async (doc: DocumentDto, enabled: boolean) => {
+    setTogglingId(doc.id);
     try {
-      await documentsApi.delete(d.id);
-      if (editingId === d.id) cancel();
-      await refresh();
-      openNotification(`Document "${d.name}" deleted`, 'Success');
+      await documentsApi.update(doc.id, { enabled });
+      setItems((prev) =>
+        prev.map((d) => (d.id === doc.id ? { ...d, enabled } : d))
+      );
     } catch (e) {
       openNotification(
-        (e as Error)?.message || 'Failed to delete document',
+        (e as Error)?.message || 'Failed to update document',
         'Error'
       );
+    } finally {
+      setTogglingId(null);
     }
   };
 
-  const listItems = useMemo(
-    () =>
-      items.map((d) => ({
-        id: d.id,
-        name: d.name,
-        meta: `${d.chunkCount} chunks · ${d.enabled ? 'enabled' : 'disabled'}`,
-      })),
-    [items]
-  );
+  const remove = (doc: DocumentDto) => {
+    confirm({
+      title: `Delete "${doc.name}"?`,
+      body: 'This removes the document and all of its indexed chunks.',
+      danger: true,
+      okText: 'Delete',
+      onOk: async () => {
+        try {
+          await documentsApi.delete(doc.id);
+          await refresh();
+          openNotification(`Document "${doc.name}" deleted`, 'Success');
+        } catch (e) {
+          openNotification(
+            (e as Error)?.message || 'Failed to delete document',
+            'Error'
+          );
+        }
+      },
+    });
+  };
+
+  const rowMenuItems = (doc: DocumentDto) => [
+    {
+      key: 'rename',
+      label: (
+        <span className={styles.menuItem}>
+          <CustomIcon name="edit" size={14} />
+          Rename
+        </span>
+      ),
+      onClick: () => openEdit(doc),
+    },
+    {
+      key: 'delete',
+      label: (
+        <span className={`${styles.menuItem} ${styles.menuItemDanger}`}>
+          <CustomIcon name="delete" size={14} />
+          Delete
+        </span>
+      ),
+      danger: true,
+      onClick: () => remove(doc),
+    },
+  ];
+
+  const columns: TableColumnsType<DocumentDto> = [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+        ellipsis: true,
+        render: (name: string) => (
+          <span className={styles.cellName}>{name}</span>
+        ),
+      },
+      {
+        title: 'Type',
+        key: 'type',
+        width: 88,
+        render: (_: unknown, record) => (
+          <span className={styles.fileBadge}>
+            {fileExtension(record.name).toUpperCase()}
+          </span>
+        ),
+      },
+      {
+        title: 'Chunks',
+        dataIndex: 'chunkCount',
+        key: 'chunks',
+        width: 88,
+        align: 'right',
+      },
+      {
+        title: 'Updated',
+        key: 'updated',
+        width: 110,
+        render: (_: unknown, record) =>
+          relativeTime(record.updatedAt) || '—',
+      },
+      {
+        title: 'RAG',
+        key: 'enabled',
+        width: 72,
+        align: 'center',
+        render: (_: unknown, record) => (
+          <CustomSwitch
+            checked={record.enabled}
+            disabled={togglingId === record.id}
+            onChange={(checked) => void toggleEnabled(record, checked)}
+            ariaLabel={
+              record.enabled ? 'Disable document' : 'Enable document'
+            }
+          />
+        ),
+      },
+      {
+        title: '',
+        key: 'actions',
+        width: 52,
+        align: 'center',
+        render: (_: unknown, record) => (
+          <CustomDropdown items={rowMenuItems(record)} placement="bottomRight">
+            <CustomButton
+              variant="text"
+              size="small"
+              aria-label={`Actions for ${record.name}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <CustomIcon name="more" size={16} />
+            </CustomButton>
+          </CustomDropdown>
+        ),
+      },
+  ];
 
   return (
-    <ResourcePanelTemplate
-      title="Documents"
-      subtitle={
-        assistant
-          ? `Reference documents ${assistant.name} can retrieve from (RAG).`
-          : 'Reference documents the assistant can retrieve from (RAG).'
-      }
-      items={listItems}
-      selectedId={editingId}
-      onSelect={(it) => {
-        const found = items.find((x) => x.id === it.id);
-        if (found) startEdit(found);
-      }}
-      onNew={startNew}
-      onDelete={(it) => {
-        const found = items.find((x) => x.id === it.id);
-        if (found) return remove(found);
-      }}
-      newLabel="+ Upload document"
-      emptyListLabel={
-        assistantId ? 'No documents yet' : 'Pick an assistant in the left rail'
-      }
-    >
-      <FormTemplate
-        onSubmit={(e) => {
-          e.preventDefault();
-          void save();
-        }}
-      >
-        {editingId === 'new' ? (
-          <>
-            <label className={styles.fieldLabel}>Document file</label>
-            <CustomFileUpload
-              value={newFile}
-              onChange={setNewFile}
-              dropLabel="Drop a .pdf, .md, .txt, or .docx file"
-              buttonLabel="Choose file"
-            />
-          </>
-        ) : (
-          <>
-            <label className={styles.fieldLabel}>Name</label>
-            <CustomInput
-              value={formName}
-              onChange={(e) => setFormName(e.target.value)}
-              fullWidth
-            />
-
-            <label className={styles.fieldLabel}>Status</label>
-            <CustomTag tone={formEnabled ? 'success' : 'neutral'}>
-              {formEnabled ? 'Enabled' : 'Disabled'}
-            </CustomTag>
-            <div>
-              <CustomButton
-                variant="ghost"
-                onClick={() => setFormEnabled((v) => !v)}
-              >
-                {formEnabled ? 'Disable' : 'Enable'}
-              </CustomButton>
-            </div>
-          </>
-        )}
-
-        {error && <div className={styles.formError}>{error}</div>}
-
-        <div className={styles.formActions}>
-          <CustomButton variant="primary" htmlType="submit" loading={saving}>
-            {editingId === 'new' ? 'Upload' : 'Save'}
+    <>
+      <div className={styles.page}>
+        <header className={styles.pageHeader}>
+          <div className={styles.pageHeaderMain}>
+            <div className={styles.pageEyebrow}>Knowledge</div>
+            <h1 className={styles.pageTitle}>Documents</h1>
+            <p className={styles.pageSubtitle}>
+              {assistant
+                ? `Reference documents ${assistant.name} can retrieve from (RAG).`
+                : 'Reference documents the assistant can retrieve from (RAG).'}
+            </p>
+          </div>
+          <CustomButton
+            variant="primary"
+            size="small"
+            disabled={!assistantId}
+            onClick={openUpload}
+          >
+            <CustomIcon name="upload" size={14} />
+            Upload
           </CustomButton>
-          <CustomButton variant="secondary" onClick={cancel} disabled={saving}>
-            Cancel
-          </CustomButton>
+        </header>
+
+        <div className={styles.tableWrap}>
+          {!assistantId ? (
+            <CustomEmptyState
+              title="No assistant selected"
+              description="Pick an assistant in the left menu to manage documents."
+            />
+          ) : items.length === 0 && !loading ? (
+            <CustomEmptyState
+              title="No documents yet"
+              description="Upload PDF, Markdown, text, or Word files for RAG retrieval."
+              action={
+                <CustomButton variant="primary" onClick={openUpload}>
+                  <CustomIcon name="upload" size={14} />
+                  Upload document
+                </CustomButton>
+              }
+            />
+          ) : (
+            <CustomTable<DocumentDto>
+              rowKey="id"
+              dataSource={items}
+              columns={columns}
+              loading={loading}
+            />
+          )}
         </div>
-      </FormTemplate>
-    </ResourcePanelTemplate>
+      </div>
+
+      <CustomModal
+        open={uploadOpen}
+        title="Upload document"
+        onClose={() => {
+          if (!uploading) setUploadOpen(false);
+        }}
+        width="md"
+        footer={
+          <>
+            <CustomButton
+              variant="secondary"
+              onClick={() => setUploadOpen(false)}
+              disabled={uploading}
+            >
+              Cancel
+            </CustomButton>
+            <CustomButton
+              variant="primary"
+              onClick={() => void submitUpload()}
+              loading={uploading}
+              disabled={!uploadFile}
+            >
+              Upload
+            </CustomButton>
+          </>
+        }
+      >
+        <div className={styles.modalBody}>
+          <p className={styles.modalHint}>
+            Supported: PDF, Markdown, plain text, and Word (.docx). The file
+            will be chunked and indexed for retrieval.
+          </p>
+          <CustomFileUpload
+            value={uploadFile}
+            onChange={setUploadFile}
+            accept=".pdf,.md,.txt,.docx"
+            dropLabel="Drop a .pdf, .md, .txt, or .docx file"
+            buttonLabel="Choose file"
+          />
+        </div>
+      </CustomModal>
+
+      <CustomModal
+        open={editOpen}
+        title="Rename document"
+        onClose={() => {
+          if (!saving) setEditOpen(false);
+        }}
+        width="sm"
+        footer={
+          <>
+            <CustomButton
+              variant="secondary"
+              onClick={() => setEditOpen(false)}
+              disabled={saving}
+            >
+              Cancel
+            </CustomButton>
+            <CustomButton
+              variant="primary"
+              onClick={() => void saveEdit()}
+              loading={saving}
+              disabled={!editName.trim()}
+            >
+              Save
+            </CustomButton>
+          </>
+        }
+      >
+        <div className={styles.modalBody}>
+          <label className={styles.fieldLabel}>Display name</label>
+          <CustomInput
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            fullWidth
+            autoFocus
+          />
+        </div>
+      </CustomModal>
+    </>
   );
 };
 

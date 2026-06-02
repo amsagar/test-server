@@ -34,6 +34,9 @@ export type {
 export { default as CustomInput } from './CustomInput';
 export type { CustomInputProps } from './CustomInput';
 
+export { default as CustomSwitch } from './CustomSwitch';
+export type { CustomSwitchProps } from './CustomSwitch';
+
 export { default as CustomTextarea } from './CustomTextarea';
 export type { CustomTextareaProps } from './CustomTextarea';
 

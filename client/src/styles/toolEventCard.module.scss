@@ -1,11 +1,82 @@
 @use './colors' as *;
 
+.group {
+  border: 1px solid $tool_card_border;
+  border-radius: $radius_md;
+  margin-bottom: 8px;
+  background: $tool_card_bg;
+  overflow: hidden;
+}
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+
+  &:hover {
+    background: $white_3;
+  }
+}
+
+.groupStatus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.groupTitle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.groupLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: $ink_900;
+}
+
+.groupMeta {
+  font-size: 12px;
+  color: $muted;
+  font-weight: 500;
+}
+
+.groupBody {
+  border-top: 1px solid $divider;
+  background: $bg_surface;
+  padding: 8px 10px 10px;
+}
+
+.groupSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .card {
   border: 1px solid $tool_card_border;
   border-radius: $radius_md;
   margin-bottom: 8px;
   background: $tool_card_bg;
   overflow: hidden;
+}
+
+.cardNested {
+  margin-bottom: 0;
+  background: $bg_surface;
 }
 
 .error {
@@ -16,13 +87,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   padding: 8px 10px;
+  border: none;
+  background: transparent;
   cursor: pointer;
   font-size: 13px;
-}
+  text-align: left;
+  font: inherit;
 
-.head:hover {
-  background: $white_3;
+  &:hover {
+    background: $white_3;
+  }
 }
 
 .status {

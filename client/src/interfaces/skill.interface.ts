@@ -13,3 +13,19 @@ export interface UpdateSkillRequest {
   description?: string;
   enabled?: boolean;
 }
+
+export interface SkillFileNode {
+  path: string;
+  name: string;
+  type: 'file' | 'folder';
+  children: SkillFileNode[];
+}
+
+export interface SkillFileContent {
+  path: string;
+  content: string;
+}
+
+export interface UpdateSkillFileRequest {
+  content: string;
+}

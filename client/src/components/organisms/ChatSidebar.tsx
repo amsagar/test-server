@@ -20,6 +20,8 @@ export interface ChatSidebarProps {
 
   sessions: ChatSessionDto[];
   currentId: string | null;
+  sessionsLoading?: boolean;
+  messagesLoading?: boolean;
   onNewChat: () => void;
   onOpenSession: (id: string) => void;
   onRenameSession: (id: string, title: string) => void | Promise<void>;
@@ -37,6 +39,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onToggleArchived,
   sessions,
   currentId,
+  sessionsLoading,
+  messagesLoading,
   onNewChat,
   onOpenSession,
   onRenameSession,
@@ -109,6 +113,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         sessions={sessions}
         currentId={currentId}
         showArchived={showArchived}
+        sessionsLoading={sessionsLoading}
+        messagesLoading={messagesLoading}
         onOpen={onOpenSession}
         onRename={onRenameSession}
         onToggleArchive={onToggleArchive}

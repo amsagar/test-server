@@ -8,6 +8,8 @@ import * as styles from '@styles/toolEventCard.module.scss';
 
 export interface ToolEventCardProps {
   tool: UiToolCall;
+  /** Render inside a {@link ToolEventsGroup} (indented, compact). */
+  nested?: boolean;
 }
 
 const PayloadBlock: React.FC<{
@@ -52,7 +54,7 @@ const PayloadBlock: React.FC<{
   );
 };
 
-const ToolEventCard: React.FC<ToolEventCardProps> = ({ tool }) => {
+const ToolEventCard: React.FC<ToolEventCardProps> = ({ tool, nested }) => {
   const [open, setOpen] = useState(false);
 
   const statusIcon = tool.running ? (
@@ -64,14 +66,23 @@ const ToolEventCard: React.FC<ToolEventCardProps> = ({ tool }) => {
   );
 
   return (
-    <div className={`${styles.card} ${tool.error ? styles.error : ''}`}>
-      <div className={styles.head} onClick={() => setOpen((o) => !o)}>
+    <div
+      className={`${styles.card} ${nested ? styles.cardNested : ''} ${
+        tool.error ? styles.error : ''
+      }`}
+    >
+      <button
+        type="button"
+        className={styles.head}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
         <span className={styles.status}>{statusIcon}</span>
         <span className={styles.name}>{tool.name}</span>
         <span className={styles.caret}>
           <CustomIcon name={open ? 'caret-down' : 'caret-right'} size={11} />
         </span>
-      </div>
+      </button>
       {open && (
         <div className={styles.body}>
           <PayloadBlock label="Input" raw={tool.input} />

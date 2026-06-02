@@ -1,85 +1,253 @@
 @use './colors' as *;
 
-.topGrid {
-  display: grid;
-  grid-template-columns: minmax(220px, 320px) 1fr;
-  gap: 24px;
-  align-items: start;
+.page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-@media (max-width: 900px) {
-  .topGrid {
-    grid-template-columns: 1fr;
-    gap: 14px;
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px 12px;
+  border-bottom: 1px solid $cream_200;
+  flex-shrink: 0;
+}
+
+.pageHeaderMain {
+  min-width: 0;
+}
+
+.pageEyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $muted;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.pageTitle {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 600;
+  color: $ink_900;
+  letter-spacing: -0.02em;
+}
+
+.pageSubtitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: $ink_500;
+  max-width: 640px;
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 32px;
+  text-align: center;
+  color: $ink_500;
+
+  p {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: $ink_700;
+  }
+
+  span {
+    max-width: 360px;
+    font-size: 14px;
+    line-height: 1.55;
   }
 }
 
-.nameField,
-.toolsField {
+.formWrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.formBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px 24px 0;
+  gap: 0;
+}
+
+.formMeta {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) 1fr;
+  gap: 16px 20px;
+  align-items: end;
+  padding-bottom: 10px;
+  border-bottom: 1px solid $cream_200;
+}
+
+@media (max-width: 800px) {
+  .formMeta {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}
+
+.nameField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.toolsSection {
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-width: 0;
 }
 
-.toolChips {
+.toolsSectionHeader {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin-top: 2px;
 }
 
-.toolChip {
+.toolsCount {
+  font-size: 11px;
+  color: $muted;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .toolGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.toolCard {
   appearance: none;
   border: 1px solid $cream_200;
   background: $bg_surface;
-  color: $ink_500;
-  padding: 7px 14px 7px 10px;
-  border-radius: 999px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
+  border-radius: $radius_sm;
+  padding: 6px 8px;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.15s ease;
+  gap: 7px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  min-height: 36px;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
 }
 
-.toolChip:hover {
+.toolCard:hover {
   border-color: $cream_300;
   background: $cream_50;
-  color: $ink_900;
 }
 
-.toolChipDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: $cream_300;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-}
-
-.toolChipActive {
+.toolCardActive {
   border-color: $pods_red;
   background: $pods_red_tint;
-  color: $pods_red_active;
 }
 
-.toolChipActive .toolChipDot {
-  background: $pods_red;
-  box-shadow: 0 0 0 3px $pods_red_tint;
-}
-
-.toolChipActive:hover {
+.toolCardActive:hover {
   background: $pods_red_tint_strong;
 }
 
+.toolCardIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: $cream_100;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: $ink_500;
+  flex-shrink: 0;
+}
+
+.toolCardActive .toolCardIcon {
+  background: $bg_surface;
+  color: $pods_red;
+}
+
+.toolCardBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.toolCardTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: $ink_900;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolCardDesc {
+  display: none;
+}
+
+.toolCardToggle {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid $cream_300;
+  background: $bg_surface;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: $muted;
+  flex-shrink: 0;
+}
+
+.toolCardActive .toolCardToggle {
+  border-color: $pods_red;
+  background: $pods_red;
+  color: #fff;
+}
+
 .promptSection {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 6px;
+  padding-top: 10px;
+  overflow: hidden;
 }
 
 .promptHeader {
@@ -87,10 +255,25 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .promptCount {
   font-size: 11px;
   color: $muted;
   font-variant-numeric: tabular-nums;
+}
+
+.formFooter {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  padding: 10px 24px 14px;
+  border-top: 1px solid $cream_200;
+  background: $cream_50;
+}
+
+.formError {
+  flex-shrink: 0;
+  margin-top: 8px;
 }

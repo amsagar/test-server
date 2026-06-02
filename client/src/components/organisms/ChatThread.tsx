@@ -1,16 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import CustomButton from '@atoms/CustomButton';
+import CustomSpinner from '@atoms/CustomSpinner';
 import CustomTooltip from '@atoms/CustomTooltip';
 import CustomIcon from '@atoms/CustomIcon';
 import MessageBubble from '@molecules/MessageBubble';
 import MessageEditor from '@molecules/MessageEditor';
-import ToolEventCard from './ToolEventCard';
+import ToolEventsGroup from './ToolEventsGroup';
 import type { UiChatMessage } from '@interfaces/chat.interface';
 import * as styles from '@styles/chatThread.module.scss';
 
 export interface ChatThreadProps {
   messages: UiChatMessage[];
   streaming: boolean;
+  messagesLoading?: boolean;
   hasSession: boolean;
   assistantName?: string;
   onResend: (userIndex: number, text: string) => void;
@@ -19,6 +21,7 @@ export interface ChatThreadProps {
 const ChatThread: React.FC<ChatThreadProps> = ({
   messages,
   streaming,
+  messagesLoading,
   hasSession,
   assistantName,
   onResend,
@@ -46,6 +49,16 @@ const ChatThread: React.FC<ChatThreadProps> = ({
       // ignore — clipboard may be unavailable in certain contexts
     }
   };
+
+  if (messagesLoading && hasSession) {
+    return (
+      <div className={styles.thread} ref={scrollRef}>
+        <div className={styles.threadLoading} aria-busy="true" aria-live="polite">
+          <CustomSpinner size="large" tip="Loading conversation…" />
+        </div>
+      </div>
+    );
+  }
 
   if (messages.length === 0) {
     return (
@@ -75,8 +88,11 @@ const ChatThread: React.FC<ChatThreadProps> = ({
       <div className={styles.threadInner}>
         {messages.map((m, i) => {
           const isUser = m.role === 'user';
-          const showTypingDots =
-            !isUser && (m.tools || []).length === 0 && !m.content;
+          const toolCount = (m.tools || []).length;
+          const showTypingDots = !isUser && !m.content;
+          const activeTurn =
+            !isUser && streaming && i === messages.length - 1;
+          const groupedTools = !isUser && toolCount > 0;
           const isEditing = editingIndex === i;
           const canRegenerate =
             !isUser && i > 0 && messages[i - 1]?.role === 'user' && !streaming;
@@ -96,10 +112,9 @@ const ChatThread: React.FC<ChatThreadProps> = ({
                 </div>
               )}
 
-              {!isUser &&
-                (m.tools || []).map((t) => (
-                  <ToolEventCard key={t.id} tool={t} />
-                ))}
+              {groupedTools && (
+                <ToolEventsGroup tools={m.tools} activeTurn={activeTurn} />
+              )}
 
               {isEditing && isUser ? (
                 <MessageEditor
@@ -112,7 +127,12 @@ const ChatThread: React.FC<ChatThreadProps> = ({
                   }}
                 />
               ) : (
-                <MessageBubble message={m} showTypingDots={showTypingDots} />
+                (isUser || !groupedTools || !!m.content || showTypingDots) && (
+                  <MessageBubble
+                    message={m}
+                    showTypingDots={showTypingDots}
+                  />
+                )
               )}
 
               {!isEditing && !streaming && (

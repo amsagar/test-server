@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import CustomSpinner from '@atoms/CustomSpinner';
 import SessionRow from '@molecules/SessionRow';
 import { groupSessionsByDate } from '@utils/groupSessionsByDate';
 import type { ChatSessionDto } from '@interfaces/chat.interface';
@@ -8,6 +9,8 @@ export interface SessionListProps {
   sessions: ChatSessionDto[];
   currentId: string | null;
   showArchived: boolean;
+  sessionsLoading?: boolean;
+  messagesLoading?: boolean;
   onOpen: (id: string) => void;
   onRename: (id: string, title: string) => void | Promise<void>;
   onToggleArchive: (
@@ -21,12 +24,24 @@ const SessionList: React.FC<SessionListProps> = ({
   sessions,
   currentId,
   showArchived,
+  sessionsLoading,
+  messagesLoading,
   onOpen,
   onRename,
   onToggleArchive,
   onDelete,
 }) => {
   const groups = useMemo(() => groupSessionsByDate(sessions), [sessions]);
+
+  if (sessionsLoading && sessions.length === 0) {
+    return (
+      <div className={styles.sessionList}>
+        <div className={styles.sessionListLoading}>
+          <CustomSpinner size="small" tip="Loading chats…" />
+        </div>
+      </div>
+    );
+  }
 
   if (sessions.length === 0) {
     return (
@@ -42,6 +57,11 @@ const SessionList: React.FC<SessionListProps> = ({
 
   return (
     <div className={styles.sessionList}>
+      {sessionsLoading && (
+        <div className={styles.sessionListOverlay} aria-busy="true">
+          <CustomSpinner size="small" />
+        </div>
+      )}
       {groups.map((group) => (
         <div key={group.label}>
           <div className={styles.groupLabel}>{group.label}</div>
@@ -51,6 +71,7 @@ const SessionList: React.FC<SessionListProps> = ({
                 key={s.id}
                 session={s}
                 selected={s.id === currentId}
+                loading={s.id === currentId && !!messagesLoading}
                 onOpen={() => onOpen(s.id)}
                 onRename={(title) => onRename(s.id, title)}
                 onToggleArchive={() =>

@@ -1,4 +1,5 @@
 import makeApiRequest, { qs } from './makeApiRequest';
+import axios from 'axios';
 import { API_ENDPOINTS } from '@constants/apiEndpoints';
 import type {
   ChatSessionDto,
@@ -26,6 +27,8 @@ import type {
 } from '@interfaces/auth.interface';
 import type {
   SkillDto,
+  SkillFileContent,
+  SkillFileNode,
   UpdateSkillRequest,
 } from '@interfaces/skill.interface';
 import type {
@@ -155,6 +158,36 @@ export const skillsApi = {
   },
   delete: (id: string) =>
     makeApiRequest<void>({}, E.DELETE_SKILL, id),
+  listFiles: (id: string) =>
+    makeApiRequest<SkillFileNode[]>({}, E.LIST_SKILL_FILES, id),
+  getFile: (id: string, path: string) =>
+    makeApiRequest<SkillFileContent>(
+      {},
+      E.GET_SKILL_FILE,
+      JSON.stringify({ id, path })
+    ),
+  updateFile: (id: string, path: string, content: string) =>
+    makeApiRequest<SkillDto>(
+      { content },
+      E.UPDATE_SKILL_FILE,
+      JSON.stringify({ id, path })
+    ),
+  download: async (id: string, filename: string) => {
+    const url =
+      typeof E.DOWNLOAD_SKILL.url === 'function'
+        ? E.DOWNLOAD_SKILL.url(id)
+        : E.DOWNLOAD_SKILL.url;
+    const { data } = await axios.get<Blob>(url, { responseType: 'blob' });
+    const safeName = filename.replace(/[^a-zA-Z0-9._-]+/g, '-');
+    const objectUrl = URL.createObjectURL(data);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = safeName.endsWith('.zip') ? safeName : `${safeName}.zip`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(objectUrl);
+  },
 };
 
 export const documentsApi = {

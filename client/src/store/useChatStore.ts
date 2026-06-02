@@ -28,6 +28,8 @@ interface ChatStoreState {
   // Active conversation
   messages: UiChatMessage[];
   streaming: boolean;
+  messagesLoading: boolean;
+  sessionsLoading: boolean;
 
   // ---- actions ----
   refreshSessions: (archived?: boolean) => Promise<void>;
@@ -55,6 +57,7 @@ interface ChatStoreState {
 }
 
 let activeStreamClose: (() => void) | null = null;
+let sessionLoadGeneration = 0;
 
 const toUiMessage = (m: {
   role: 'user' | 'assistant' | 'system';
@@ -83,11 +86,18 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   selectedStyleId: '',
   messages: [],
   streaming: false,
+  messagesLoading: false,
+  sessionsLoading: false,
 
   refreshSessions: async (archived) => {
     const isArchived = archived ?? get().showArchived;
-    const sessions = await sessionsApi.list(isArchived);
-    set({ sessions });
+    set({ sessionsLoading: true });
+    try {
+      const sessions = await sessionsApi.list(isArchived);
+      set({ sessions });
+    } finally {
+      set({ sessionsLoading: false });
+    }
   },
 
   refreshAssistants: async () => {
@@ -121,12 +131,21 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   setSelectedStyleId: (id) => set({ selectedStyleId: id }),
 
   openSession: async (id) => {
-    set({ currentId: id });
+    get()._closeStream();
+    const gen = ++sessionLoadGeneration;
+    set({
+      currentId: id,
+      messages: [],
+      messagesLoading: true,
+      streaming: false,
+    });
     try {
       const msgs = await sessionsApi.messages(id);
-      set({ messages: msgs.map(toUiMessage) });
+      if (gen !== sessionLoadGeneration) return;
+      set({ messages: msgs.map(toUiMessage), messagesLoading: false });
     } catch {
-      set({ messages: [] });
+      if (gen !== sessionLoadGeneration) return;
+      set({ messages: [], messagesLoading: false });
     }
   },
 
@@ -140,11 +159,13 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       currentId: null,
       messages: [],
       streaming: false,
+      messagesLoading: false,
       showArchived: false,
     });
   },
 
-  clearSelection: () => set({ currentId: null, messages: [] }),
+  clearSelection: () =>
+    set({ currentId: null, messages: [], messagesLoading: false }),
 
   renameSession: async (id, title) => {
     if (!title.trim()) return;
@@ -154,13 +175,17 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
 
   toggleArchive: async (id, archived) => {
     await sessionsApi.update(id, { archived });
-    if (get().currentId === id) set({ currentId: null, messages: [] });
+    if (get().currentId === id) {
+      set({ currentId: null, messages: [], messagesLoading: false });
+    }
     await get().refreshSessions();
   },
 
   deleteSession: async (id) => {
     await sessionsApi.delete(id);
-    if (get().currentId === id) set({ currentId: null, messages: [] });
+    if (get().currentId === id) {
+      set({ currentId: null, messages: [], messagesLoading: false });
+    }
     await get().refreshSessions();
   },
 

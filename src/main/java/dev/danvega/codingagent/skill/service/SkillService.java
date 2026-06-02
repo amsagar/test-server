@@ -2,6 +2,8 @@ package dev.danvega.codingagent.skill.service;
 
 import dev.danvega.codingagent.skill.dto.request.UpdateSkillRequest;
 import dev.danvega.codingagent.skill.dto.response.SkillDto;
+import dev.danvega.codingagent.skill.dto.response.SkillFileContentDto;
+import dev.danvega.codingagent.skill.dto.response.SkillFileNodeDto;
 import dev.danvega.codingagent.skill.entity.AgentSkill;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,6 +20,15 @@ public interface SkillService {
     SkillDto update(String id, UpdateSkillRequest request, MultipartFile file);
 
     void delete(String id);
+
+    List<SkillFileNodeDto> listFiles(String id);
+
+    SkillFileContentDto getFileContent(String id, String path);
+
+    SkillDto updateFileContent(String id, String path, String content);
+
+    /** Zip archive of all files in the skill bundle. */
+    byte[] downloadBundle(String id);
 
     /** Enabled skills for an assistant, used to materialize a runtime workspace. */
     List<AgentSkill> forAssistant(String assistantId);

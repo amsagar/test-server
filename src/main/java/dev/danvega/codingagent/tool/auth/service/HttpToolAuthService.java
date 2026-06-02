@@ -105,7 +105,7 @@ public class HttpToolAuthService {
     private void applyKeyed(String type, ResolvedAuth resolved, Map<String, Object> cfg,
                             String apiKeyValue, String bearerToken, String basicPassword) {
         switch (type) {
-            case "api_key" -> {
+            case "api_key", "api_key_header" -> {
                 String name = str(cfg.get("name"));
                 if (name != null && apiKeyValue != null) {
                     if ("query".equalsIgnoreCase(str(cfg.get("in")))) {
@@ -115,12 +115,12 @@ public class HttpToolAuthService {
                     }
                 }
             }
-            case "bearer" -> {
+            case "bearer", "bearer_token" -> {
                 if (bearerToken != null) {
                     resolved.headers().put(HttpHeaders.AUTHORIZATION, "Bearer " + bearerToken);
                 }
             }
-            case "basic" -> {
+            case "basic", "basic_auth" -> {
                 String username = str(cfg.get("username"));
                 if (username != null) {
                     String creds = username + ":" + (basicPassword == null ? "" : basicPassword);

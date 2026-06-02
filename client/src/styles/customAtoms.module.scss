@@ -356,6 +356,29 @@
   text-overflow: ellipsis;
 }
 
+// CustomSwitch
+.switch:global(.ant-switch) {
+  background: $cream_300 !important;
+  min-width: 36px;
+}
+
+.switch:global(.ant-switch-checked) {
+  background: $pods_red !important;
+}
+
+.switch:global(.ant-switch:hover:not(.ant-switch-disabled)) {
+  background: $cream_400 !important;
+}
+
+.switch:global(.ant-switch-checked:hover:not(.ant-switch-disabled)) {
+  background: $pods_red_hover !important;
+}
+
+.switch:global(.ant-switch:focus-visible) {
+  outline: 2px solid $pods_red_tint_strong;
+  outline-offset: 2px;
+}
+
 // CustomEmptyState
 .empty {
   display: flex;

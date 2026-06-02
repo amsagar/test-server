@@ -7,10 +7,12 @@ export interface MarkdownEditorProps {
   value: string;
   onChange: (next: string) => void;
   placeholder?: string;
-  /** min textarea rows */
+  /** min textarea rows (ignored when fillHeight) */
   minRows?: number;
-  /** max textarea rows before scrolling */
+  /** max textarea rows before scrolling (ignored when fillHeight) */
   maxRows?: number;
+  /** Fill parent height; only the editor body scrolls */
+  fillHeight?: boolean;
   /** Optional className for the outer wrapper */
   className?: string;
   /** Optional aria-label for the textarea */
@@ -25,13 +27,22 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   placeholder,
   minRows = 12,
   maxRows = 28,
+  fillHeight = false,
   className,
   ariaLabel,
 }) => {
   const [mode, setMode] = useState<Mode>('edit');
 
   return (
-    <div className={[styles.wrap, className].filter(Boolean).join(' ')}>
+    <div
+      className={[
+        styles.wrap,
+        fillHeight ? styles.wrapFill : undefined,
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <div className={styles.toolbar}>
         <div className={styles.tabs} role="tablist" aria-label="Editor mode">
           <button
@@ -56,24 +67,40 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         <span className={styles.hint}>Markdown</span>
       </div>
 
-      {mode === 'edit' ? (
-        <CustomTextarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          autoSize={{ minRows, maxRows }}
-          aria-label={ariaLabel}
-          variant="borderless"
-          fullWidth
-          className={styles.textarea}
-        />
-      ) : value.trim() ? (
-        <div className={styles.preview}>
-          <MarkdownContent source={value} />
-        </div>
-      ) : (
-        <div className={styles.previewEmpty}>Nothing to preview yet.</div>
-      )}
+      <div className={fillHeight ? styles.bodyScroll : undefined}>
+        {mode === 'edit' ? (
+          <CustomTextarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            autoSize={fillHeight ? false : { minRows, maxRows }}
+            aria-label={ariaLabel}
+            variant="borderless"
+            fullWidth
+            className={
+              fillHeight ? `${styles.textarea} ${styles.textareaFill}` : styles.textarea
+            }
+          />
+        ) : value.trim() ? (
+          <div
+            className={
+              fillHeight ? `${styles.preview} ${styles.previewFill}` : styles.preview
+            }
+          >
+            <MarkdownContent source={value} />
+          </div>
+        ) : (
+          <div
+            className={
+              fillHeight
+                ? `${styles.previewEmpty} ${styles.previewFill}`
+                : styles.previewEmpty
+            }
+          >
+            Nothing to preview yet.
+          </div>
+        )}
+      </div>
     </div>
   );
 };

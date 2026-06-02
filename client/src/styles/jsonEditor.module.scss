@@ -15,6 +15,10 @@
   box-shadow: 0 0 0 3px $pods_red_tint;
 }
 
+.wrapReadOnly {
+  background: $code_bg;
+}
+
 .toolbar {
   display: flex;
   align-items: center;
@@ -23,6 +27,13 @@
   padding: 6px 10px;
   border-bottom: 1px solid $cream_200;
   background: $cream_50;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .tabs {
@@ -46,7 +57,6 @@
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
-  font-family: inherit;
 }
 
 .tab:hover {
@@ -67,68 +77,94 @@
   font-weight: 500;
 }
 
+.formatBtn {
+  appearance: none;
+  border: 1px solid $cream_200;
+  background: $bg_surface;
+  border-radius: $radius_sm;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  color: $ink_700;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.formatBtn:hover:not(:disabled) {
+  background: $cream_100;
+  border-color: $cream_300;
+}
+
+.formatBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bodyScroll {
+  max-height: 360px;
+  overflow: auto;
+}
+
+.bodyScrollCompact {
+  max-height: 200px;
+}
+
 .textarea {
   border: none !important;
   box-shadow: none !important;
   background: transparent !important;
-  padding: 14px 16px !important;
+  padding: 12px 14px !important;
   font-family: $font_mono !important;
-  font-size: 13.5px !important;
-  line-height: 1.6 !important;
+  font-size: 12.5px !important;
+  line-height: 1.55 !important;
   resize: none !important;
   color: $ink_900 !important;
-}
-
-.wrapFill {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.bodyScroll {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.textareaFill {
-  flex: 1;
-  min-height: 0;
-  display: flex !important;
-  flex-direction: column;
-}
-
-.textareaFill :global(.ant-input-textarea),
-.textareaFill :global(textarea) {
-  flex: 1;
-  min-height: 0 !important;
-  height: 100% !important;
-  overflow-y: auto !important;
-  resize: none !important;
-}
-
-.previewFill {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.textarea:focus,
-.textarea:focus-within {
-  border: none !important;
-  box-shadow: none !important;
+  tab-size: 2;
 }
 
 .preview {
-  padding: 14px 18px;
+  margin: 0;
+  padding: 12px 14px;
+  font-family: $font_mono;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: $ink_900;
+  white-space: pre-wrap;
+  word-break: break-word;
+  tab-size: 2;
 }
 
 .previewEmpty {
-  padding: 28px 18px;
+  padding: 20px 14px;
   text-align: center;
   color: $muted;
   font-size: 13px;
+}
+
+.previewError {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: $danger;
+  font-family: $font_family;
+}
+
+.key {
+  color: #8c4a2f;
+}
+
+.string {
+  color: #5f8b54;
+}
+
+.number {
+  color: #3d6b8c;
+}
+
+.boolean {
+  color: #7a5c9e;
+}
+
+.null {
+  color: $muted;
 }

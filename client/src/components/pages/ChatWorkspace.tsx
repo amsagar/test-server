@@ -28,6 +28,8 @@ const ChatWorkspace: React.FC = () => {
     selectedStyleId,
     messages,
     streaming,
+    messagesLoading,
+    sessionsLoading,
     refreshSessions,
     refreshAssistants,
     refreshStyles,
@@ -109,7 +111,16 @@ const ChatWorkspace: React.FC = () => {
         sessions={sessions}
         currentId={currentId}
         onNewChat={wrap(newChat, 'create chat')}
-        onOpenSession={wrap(openSession, 'open session')}
+        onOpenSession={(id) => {
+          void openSession(id).catch((e) =>
+            openNotification(
+              (e as Error)?.message || 'Failed to open session',
+              'Error'
+            )
+          );
+        }}
+        sessionsLoading={sessionsLoading}
+        messagesLoading={messagesLoading}
         onRenameSession={wrap(renameSession, 'rename')}
         onToggleArchive={wrap(toggleArchive, 'archive')}
         onDeleteSession={wrap(deleteSession, 'delete')}
@@ -188,6 +199,7 @@ const ChatWorkspace: React.FC = () => {
         <ChatThread
           messages={messages}
           streaming={streaming}
+          messagesLoading={messagesLoading}
           hasSession={!!currentId}
           assistantName={activeAssistant?.name}
           onResend={(idx, text) =>
@@ -197,6 +209,7 @@ const ChatWorkspace: React.FC = () => {
 
         <Composer
           streaming={streaming}
+          disabled={messagesLoading}
           onSend={(t) => void wrap(send, 'send')(t)}
           placeholder={composerPlaceholder}
         />

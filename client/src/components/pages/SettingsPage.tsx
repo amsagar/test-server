@@ -2,10 +2,12 @@ import React from 'react';
 import { NavLink, Navigate, useParams, useNavigate } from 'react-router-dom';
 import CustomIcon, { CustomIconName } from '@atoms/CustomIcon';
 import CustomSelect from '@atoms/CustomSelect';
+import CustomButton from '@atoms/CustomButton';
 import {
   SettingsScopeProvider,
   useSettingsScope,
 } from '@providers/SettingsScopeProvider';
+import { settingsPath } from '@constants/routePaths';
 import AssistantsPage from './AssistantsPage';
 import ToolsPage from './ToolsPage';
 import AuthProfilesPage from './AuthProfilesPage';
@@ -90,8 +92,14 @@ const GROUP_ORDER: ScopeGroup[] = ['Assistant'];
 
 const SettingsInner: React.FC<{ section: SectionKey }> = ({ section }) => {
   const navigate = useNavigate();
-  const { assistants, assistantId, setAssistantId, loading } =
-    useSettingsScope();
+  const {
+    assistants,
+    assistantId,
+    setAssistantId,
+    loading,
+    creatingAssistant,
+    startCreateAssistant,
+  } = useSettingsScope();
   const active = SECTIONS.find((s) => s.key === section)!;
   const ActiveComponent = active.Component;
 
@@ -99,6 +107,11 @@ const SettingsInner: React.FC<{ section: SectionKey }> = ({ section }) => {
     assistants.length === 0
       ? [{ value: '', label: 'No assistants yet' }]
       : assistants.map((a) => ({ value: a.id, label: a.name }));
+
+  const handleNewAssistant = () => {
+    startCreateAssistant();
+    navigate(settingsPath('assistants'));
+  };
 
   return (
     <div className={styles.page}>
@@ -110,13 +123,28 @@ const SettingsInner: React.FC<{ section: SectionKey }> = ({ section }) => {
 
         <div className={styles.scopePicker}>
           <label className={styles.scopeLabel}>Assistant</label>
+          <CustomButton
+            variant="primary"
+            fullWidth
+            className={styles.newAssistantBtn}
+            onClick={handleNewAssistant}
+          >
+            <CustomIcon name="plus" size={14} />
+            New assistant
+          </CustomButton>
           <CustomSelect
             options={assistantOptions}
-            value={assistantId}
+            value={creatingAssistant ? '' : assistantId}
             onChange={(v) => setAssistantId(v as string)}
-            placeholder={loading ? 'Loading…' : 'Pick an assistant'}
+            placeholder={
+              creatingAssistant
+                ? 'Creating new assistant…'
+                : loading
+                  ? 'Loading…'
+                  : 'Switch assistant'
+            }
             fullWidth
-            disabled={loading || assistants.length === 0}
+            disabled={loading || assistants.length === 0 || creatingAssistant}
           />
         </div>
 
@@ -127,12 +155,16 @@ const SettingsInner: React.FC<{ section: SectionKey }> = ({ section }) => {
             <React.Fragment key={group}>
               <div className={styles.navTitle}>For this assistant</div>
               {items.map((it) => {
+                const isGeneral = it.key === 'assistants';
                 const scopedDisabled =
-                  it.group === 'Assistant' && !assistantId && !loading;
+                  !isGeneral &&
+                  !creatingAssistant &&
+                  !assistantId &&
+                  !loading;
                 return (
                   <NavLink
                     key={it.key}
-                    to={`/settings/${it.key}`}
+                    to={settingsPath(it.key)}
                     className={({ isActive }) =>
                       [
                         styles.navItem,
@@ -169,9 +201,9 @@ const SettingsInner: React.FC<{ section: SectionKey }> = ({ section }) => {
 
 const SettingsPage: React.FC = () => {
   const { section } = useParams<{ section?: string }>();
-  if (!section) return <Navigate to="/settings/assistants" replace />;
+  if (!section) return <Navigate to={settingsPath('assistants')} replace />;
   const active = SECTIONS.find((s) => s.key === section);
-  if (!active) return <Navigate to="/settings/assistants" replace />;
+  if (!active) return <Navigate to={settingsPath('assistants')} replace />;
   return (
     <SettingsScopeProvider>
       <SettingsInner section={active.key} />

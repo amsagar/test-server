@@ -10,6 +10,7 @@ import * as styles from '@styles/chatSidebar.module.scss';
 export interface SessionRowProps {
   session: ChatSessionDto;
   selected: boolean;
+  loading?: boolean;
   onOpen: () => void;
   onRename: (title: string) => void | Promise<void>;
   onToggleArchive: () => void | Promise<void>;
@@ -19,6 +20,7 @@ export interface SessionRowProps {
 const SessionRow: React.FC<SessionRowProps> = ({
   session,
   selected,
+  loading,
   onOpen,
   onRename,
   onToggleArchive,
@@ -75,7 +77,7 @@ const SessionRow: React.FC<SessionRowProps> = ({
         <div className={styles.sessionMain}>
           <div className={styles.sessionTitle}>{session.title}</div>
           <div className={styles.sessionMeta}>
-            {relativeTime(session.updatedAt)}
+            {loading ? 'Loading…' : relativeTime(session.updatedAt)}
           </div>
         </div>
       )}

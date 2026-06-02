@@ -155,6 +155,28 @@ export const API_ENDPOINTS = {
     url: (id: string) => `${BASE_PATH}/skills/${id}`,
     method: 'DELETE',
   },
+  LIST_SKILL_FILES: {
+    url: (id: string) => `${BASE_PATH}/skills/${id}/files`,
+    method: 'GET',
+  },
+  GET_SKILL_FILE: {
+    url: (encoded: string) => {
+      const { id, path } = JSON.parse(encoded) as { id: string; path: string };
+      return `${BASE_PATH}/skills/${id}/files/content?path=${encodeURIComponent(path)}`;
+    },
+    method: 'GET',
+  },
+  UPDATE_SKILL_FILE: {
+    url: (encoded: string) => {
+      const { id, path } = JSON.parse(encoded) as { id: string; path: string };
+      return `${BASE_PATH}/skills/${id}/files/content?path=${encodeURIComponent(path)}`;
+    },
+    method: 'PUT',
+  },
+  DOWNLOAD_SKILL: {
+    url: (id: string) => `${BASE_PATH}/skills/${id}/download`,
+    method: 'GET',
+  },
 
   // ---------- documents ----------
   LIST_DOCUMENTS: {

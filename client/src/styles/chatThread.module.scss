@@ -183,6 +183,15 @@
   justify-content: flex-end;
 }
 
+.threadLoading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 48px 24px;
+}
+
 .emptyHero {
   text-align: center;
   margin: auto;

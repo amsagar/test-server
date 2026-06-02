@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import ResourcePanelTemplate from '@templates/ResourcePanelTemplate';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import FormTemplate from '@templates/FormTemplate';
 import CustomInput from '@atoms/CustomInput';
-import CustomTextarea from '@atoms/CustomTextarea';
 import CustomButton from '@atoms/CustomButton';
+import CustomIcon from '@atoms/CustomIcon';
+import CustomTooltip from '@atoms/CustomTooltip';
+import MarkdownEditor from '@molecules/MarkdownEditor';
+import { confirm } from '@atoms/CustomConfirm';
 import { useSettingsScope } from '@providers/SettingsScopeProvider';
 import { stylesApi } from '@apiCalls/services';
 import { useNotification } from '@providers/NotificationProviders';
@@ -11,13 +13,18 @@ import type {
   ResponseStyleDto,
   CreateStyleRequest,
 } from '@interfaces/style.interface';
-import * as styles from '@styles/resourcePanel.module.scss';
+import * as styles from '@styles/responseStylesPage.module.scss';
 
 const EMPTY: CreateStyleRequest = {
   name: '',
   description: '',
   instructions: '',
 };
+
+const formsEqual = (a: CreateStyleRequest, b: CreateStyleRequest): boolean =>
+  a.name.trim() === b.name.trim() &&
+  (a.description || '').trim() === (b.description || '').trim() &&
+  a.instructions === b.instructions;
 
 const ResponseStylesPage: React.FC = () => {
   const openNotification = useNotification();
@@ -28,7 +35,33 @@ const ResponseStylesPage: React.FC = () => {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const refresh = async () => {
+  const selectedStyle = useMemo(
+    () => items.find((s) => s.id === editingId) || null,
+    [items, editingId]
+  );
+
+  const savedForm = useMemo<CreateStyleRequest>(() => {
+    if (editingId === 'new') return EMPTY;
+    if (!selectedStyle) return EMPTY;
+    return {
+      name: selectedStyle.name,
+      description: selectedStyle.description,
+      instructions: selectedStyle.instructions,
+    };
+  }, [editingId, selectedStyle]);
+
+  const isDirty = useMemo(
+    () => editingId !== null && !formsEqual(form, savedForm),
+    [form, savedForm, editingId]
+  );
+
+  const canSave =
+    isDirty &&
+    !!form.name.trim() &&
+    !!form.instructions.trim() &&
+    !saving;
+
+  const refresh = useCallback(async () => {
     if (!assistantId) {
       setItems([]);
       return;
@@ -41,31 +74,51 @@ const ResponseStylesPage: React.FC = () => {
         'Error'
       );
     }
-  };
+  }, [assistantId, openNotification]);
 
   useEffect(() => {
     void refresh();
     setEditingId(null);
-  }, [assistantId]);
+    setForm(EMPTY);
+  }, [assistantId, refresh]);
+
+  const discardIfDirty = (action: () => void) => {
+    if (!isDirty) {
+      action();
+      return;
+    }
+    confirm({
+      title: 'Discard unsaved changes?',
+      body: 'You have unsaved edits for this style.',
+      danger: true,
+      okText: 'Discard',
+      onOk: action,
+    });
+  };
 
   const startNew = () => {
     if (!assistantId) {
       openNotification('Pick an assistant first', 'Warning');
       return;
     }
-    setEditingId('new');
-    setForm(EMPTY);
-    setError('');
+    discardIfDirty(() => {
+      setEditingId('new');
+      setForm(EMPTY);
+      setError('');
+    });
   };
 
   const startEdit = (s: ResponseStyleDto) => {
-    setEditingId(s.id);
-    setForm({
-      name: s.name,
-      description: s.description,
-      instructions: s.instructions,
+    if (editingId === s.id) return;
+    discardIfDirty(() => {
+      setEditingId(s.id);
+      setForm({
+        name: s.name,
+        description: s.description,
+        instructions: s.instructions,
+      });
+      setError('');
     });
-    setError('');
   };
 
   const cancel = () => {
@@ -80,6 +133,7 @@ const ResponseStylesPage: React.FC = () => {
       return;
     }
     setSaving(true);
+    setError('');
     try {
       const body: CreateStyleRequest = {
         name: form.name.trim(),
@@ -89,11 +143,21 @@ const ResponseStylesPage: React.FC = () => {
       if (editingId === 'new') {
         const created = await stylesApi.create(assistantId, body);
         openNotification(`Style "${created.name}" created`, 'Success');
+        setEditingId(created.id);
+        setForm({
+          name: created.name,
+          description: created.description,
+          instructions: created.instructions,
+        });
       } else if (editingId) {
         const updated = await stylesApi.update(editingId, body);
         openNotification(`Style "${updated.name}" updated`, 'Success');
+        setForm({
+          name: updated.name,
+          description: updated.description,
+          instructions: updated.instructions,
+        });
       }
-      cancel();
       await refresh();
     } catch (e) {
       setError((e as Error)?.message || 'Failed to save');
@@ -102,95 +166,204 @@ const ResponseStylesPage: React.FC = () => {
     }
   };
 
-  const remove = async (s: ResponseStyleDto) => {
-    try {
-      await stylesApi.delete(s.id);
-      if (editingId === s.id) cancel();
-      await refresh();
-      openNotification(`Style "${s.name}" deleted`, 'Success');
-    } catch (e) {
-      openNotification(
-        (e as Error)?.message || 'Failed to delete style',
-        'Error'
-      );
-    }
+  const remove = (s: ResponseStyleDto) => {
+    confirm({
+      title: `Delete "${s.name}"?`,
+      body: 'This removes the response style.',
+      danger: true,
+      okText: 'Delete',
+      onOk: async () => {
+        try {
+          await stylesApi.delete(s.id);
+          if (editingId === s.id) cancel();
+          await refresh();
+          openNotification(`Style "${s.name}" deleted`, 'Success');
+        } catch (e) {
+          openNotification(
+            (e as Error)?.message || 'Failed to delete style',
+            'Error'
+          );
+        }
+      },
+    });
   };
 
-  const listItems = useMemo(
-    () =>
-      items.map((s) => ({
-        id: s.id,
-        name: s.name,
-        meta: s.description || undefined,
-      })),
-    [items]
-  );
-
   return (
-    <ResourcePanelTemplate
-      title="Response Styles"
-      subtitle="Reusable instruction snippets you can pin per chat session."
-      items={listItems}
-      selectedId={editingId}
-      onSelect={(it) => {
-        const found = items.find((x) => x.id === it.id);
-        if (found) startEdit(found);
-      }}
-      onNew={startNew}
-      onDelete={(it) => {
-        const found = items.find((x) => x.id === it.id);
-        if (found) return remove(found);
-      }}
-      newLabel="+ New style"
-      emptyListLabel="No styles yet"
-    >
-      <FormTemplate
-        onSubmit={(e) => {
-          e.preventDefault();
-          void save();
-        }}
-      >
-        <label className={styles.fieldLabel}>Name</label>
-        <CustomInput
-          value={form.name}
-          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          placeholder="e.g. Crisp & technical"
-          fullWidth
-        />
+    <div className={styles.page}>
+      <header className={styles.pageHeader}>
+        <div className={styles.pageEyebrow}>Chat</div>
+        <h1 className={styles.pageTitle}>Response styles</h1>
+        <p className={styles.pageSubtitle}>
+          Reusable instruction snippets you can pin per chat session.
+        </p>
+      </header>
 
-        <label className={styles.fieldLabel}>Description</label>
-        <CustomInput
-          value={form.description || ''}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, description: e.target.value }))
-          }
-          placeholder="Short summary shown in the picker"
-          fullWidth
-        />
+      <div className={styles.workspace}>
+        <aside className={styles.sidebar}>
+          <div className={styles.sidebarHeader}>
+            <span className={styles.sidebarTitle}>Styles</span>
+            <CustomButton
+              variant="primary"
+              size="small"
+              disabled={!assistantId}
+              onClick={startNew}
+            >
+              <CustomIcon name="plus" size={14} />
+              New
+            </CustomButton>
+          </div>
+          <div className={styles.styleList}>
+            {!assistantId && (
+              <div className={styles.emptyList}>
+                Pick an assistant in the left menu
+              </div>
+            )}
+            {assistantId && items.length === 0 && editingId !== 'new' && (
+              <div className={styles.emptyList}>No styles yet</div>
+            )}
+            {editingId === 'new' && (
+              <button
+                type="button"
+                className={`${styles.styleRow} ${styles.styleRowActive}`}
+              >
+                <span className={styles.styleRowName}>New style</span>
+              </button>
+            )}
+            {items.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={`${styles.styleRow} ${
+                  editingId === s.id ? styles.styleRowActive : ''
+                }`}
+                onClick={() => startEdit(s)}
+              >
+                <span className={styles.styleRowName}>{s.name}</span>
+                {s.description && (
+                  <span className={styles.styleRowMeta}>{s.description}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </aside>
 
-        <label className={styles.fieldLabel}>Instructions</label>
-        <CustomTextarea
-          value={form.instructions}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, instructions: e.target.value }))
-          }
-          placeholder="e.g. Keep responses under 5 bullet points..."
-          autoSize={{ minRows: 8, maxRows: 24 }}
-          fullWidth
-        />
+        <section className={styles.editorPane}>
+          {!editingId ? (
+            <div className={styles.editorEmpty}>
+              <CustomIcon name="style" size={28} />
+              <p>Select or create a style</p>
+              <span>
+                Response styles shape tone and format when pinned in a chat.
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className={styles.editorHeader}>
+                <h2 className={styles.editorTitle}>
+                  {editingId === 'new'
+                    ? 'New style'
+                    : form.name.trim() || 'Untitled style'}
+                </h2>
+                {selectedStyle && (
+                  <CustomTooltip title="Delete style">
+                    <CustomButton
+                      variant="text"
+                      size="small"
+                      onClick={() => remove(selectedStyle)}
+                      aria-label="Delete style"
+                    >
+                      <CustomIcon name="delete" size={15} />
+                    </CustomButton>
+                  </CustomTooltip>
+                )}
+              </div>
 
-        {error && <div className={styles.formError}>{error}</div>}
+              <FormTemplate
+                sectionClassName={styles.formWrap}
+                className={styles.form}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void save();
+                }}
+              >
+                <div className={styles.formBody}>
+                  <div className={styles.formMeta}>
+                    <div className={styles.field}>
+                      <label className={styles.fieldLabel}>Name</label>
+                      <CustomInput
+                        value={form.name}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, name: e.target.value }))
+                        }
+                        placeholder="e.g. Developer"
+                        fullWidth
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <label className={styles.fieldLabel}>Description</label>
+                      <CustomInput
+                        value={form.description || ''}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            description: e.target.value,
+                          }))
+                        }
+                        placeholder="Short summary in the picker"
+                        fullWidth
+                      />
+                    </div>
+                  </div>
 
-        <div className={styles.formActions}>
-          <CustomButton variant="primary" htmlType="submit" loading={saving}>
-            Save
-          </CustomButton>
-          <CustomButton variant="secondary" onClick={cancel} disabled={saving}>
-            Cancel
-          </CustomButton>
-        </div>
-      </FormTemplate>
-    </ResourcePanelTemplate>
+                  <div className={styles.instructionsSection}>
+                    <div className={styles.instructionsHeader}>
+                      <label className={styles.fieldLabel}>Instructions</label>
+                      <span className={styles.charCount}>
+                        {form.instructions.length.toLocaleString()} chars
+                      </span>
+                    </div>
+                    <MarkdownEditor
+                      fillHeight
+                      value={form.instructions}
+                      onChange={(next) =>
+                        setForm((f) => ({ ...f, instructions: next }))
+                      }
+                      placeholder="How should responses read when this style is pinned? Markdown supported — use Preview to check rendering."
+                      ariaLabel="Style instructions"
+                    />
+                  </div>
+
+                  {error && <div className={styles.formError}>{error}</div>}
+                </div>
+
+                <div className={styles.formFooter}>
+                  <CustomButton
+                    variant="primary"
+                    htmlType="submit"
+                    loading={saving}
+                    disabled={!canSave}
+                  >
+                    Save
+                  </CustomButton>
+                  {editingId === 'new' && (
+                    <CustomButton
+                      variant="secondary"
+                      onClick={cancel}
+                      disabled={saving}
+                    >
+                      Cancel
+                    </CustomButton>
+                  )}
+                  {isDirty && (
+                    <span className={styles.dirtyHint}>Unsaved changes</span>
+                  )}
+                </div>
+              </FormTemplate>
+            </>
+          )}
+        </section>
+      </div>
+    </div>
   );
 };
 
